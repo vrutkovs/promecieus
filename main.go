@@ -29,7 +29,7 @@ func (e *Env) create(c *gin.Context) {
 	err := e.createPrometheus(ns)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": fmt.Sprintf("%v", err),
+			"message": err.Error(),
 		})
 	}
 

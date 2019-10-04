@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -28,7 +29,14 @@ func (e *Env) generateNamespace() string {
 // Create a temp kustomize file and apply manifests
 func (e *Env) createPrometheus(namespace string) error {
 	// Create namespace
-	exec.Command("oc", "new-project", namespace)
+	cmd := exec.Command("oc", "new-project", namespace)
+	output, err := cmd.CombinedOutput()
+	log.Printf(string(output))
+
+	if err != nil {
+		log.Printf(err.Error())
+		return err
+	}
 
 	// Make temp dir for assets
 	dir := os.TempDir()
@@ -50,7 +58,14 @@ func (e *Env) createPrometheus(namespace string) error {
 	}
 
 	// Apply kustomization
-	exec.Command("oc", "apply", "-k", dir)
+	cmd = exec.Command("oc", "apply", "-k", dir)
+	output, err = cmd.CombinedOutput()
+	log.Printf(string(output))
+
+	if err != nil {
+		log.Printf(err.Error())
+		return err
+	}
 
 	return nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -9,8 +10,9 @@ import (
 type Env struct{}
 
 func (e *Env) create(c *gin.Context) {
+	url := c.PostForm("url")
 	c.JSON(http.StatusOK, gin.H{
-		"message": "foo",
+		"message": fmt.Sprintf("foo %s", url),
 	})
 }
 

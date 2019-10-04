@@ -39,10 +39,19 @@ func (e *Env) createPrometheus(namespace string) error {
 	}
 
 	// Make temp dir for assets
-	dir := os.TempDir()
+	dir, err := ioutil.TempDir(os.TempDir(), namespace)
 	defer os.RemoveAll(dir)
+	if err != nil {
+		log.Printf(err.Error())
+		return err
+	}
+	log.Println(dir)
 
-	RestoreAssets(dir, "prom-templates")
+	err = RestoreAssets(dir, "prom-templates")
+	if err != nil {
+		log.Printf(err.Error())
+		return err
+	}
 	// Replace namespace in kustomization.yaml
 	newNamespaceSetting := fmt.Sprintf("namespace: %s", namespace)
 
@@ -56,6 +65,7 @@ func (e *Env) createPrometheus(namespace string) error {
 	if err != nil {
 		return err
 	}
+	log.Println("kustomize was rewritten")
 
 	// Apply kustomization
 	cmd = exec.Command("oc", "apply", "-k", dir)

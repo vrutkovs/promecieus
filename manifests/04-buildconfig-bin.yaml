@@ -45,3 +45,6 @@ spec:
         name: "promecieus:src"
   - type: ConfigChange
   - type: ImageChange
+  - type: "GitHub"
+    github:
+      secret: "secret101"

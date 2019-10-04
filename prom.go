@@ -45,7 +45,6 @@ func (e *Env) createPrometheus(namespace string, metricsTar string) error {
 		log.Printf(err.Error())
 		return err
 	}
-	log.Println(dir)
 	promTemplatesDir := fmt.Sprintf("%s/%s", dir, promTemplates)
 
 	err = RestoreAssets(dir, promTemplates)

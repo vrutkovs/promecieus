@@ -16,7 +16,7 @@ func (e *Env) create(c *gin.Context) {
 	log.Printf("url: %s", url)
 
 	// Get artifacts link
-	artifactsUrl := strings.ReplaceAll(url, "https://prow.svc.ci.openshift.org/view/", "https://gcsweb-ci.svc.ci.openshift.org")
+	artifactsUrl := strings.Replace(url, "https://prow.svc.ci.openshift.org/view/", "https://gcsweb-ci.svc.ci.openshift.org", -1)
 	log.Printf("artifacts: %s", artifactsUrl)
 
 	// Get a link to prometheus metadata

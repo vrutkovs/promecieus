@@ -21,6 +21,9 @@ spec:
           umask 0000
           curl -sL ${PROMTAR} | tar xvz -m
         workingDir: /prometheus/
+        envFrom:
+          - configMapRef:
+              name: promtar
         volumeMounts:
         - name: prometheus-storage-volume
           mountPath: /prometheus/

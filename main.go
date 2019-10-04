@@ -16,11 +16,9 @@ const (
 
 func create(c *gin.Context) {
 	url := c.PostForm("url")
-	log.Printf("url: %s", url)
 
 	// Get artifacts link
 	artifactsUrl := strings.Replace(url, prowPrefix, gcsPrefix, -1)
-	log.Printf("artifacts: %s", artifactsUrl)
 
 	// Get a link to prometheus metadata
 	// TODO: aws is hardcoded :/

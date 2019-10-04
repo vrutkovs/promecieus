@@ -44,7 +44,7 @@ func createPrometheus(appLabel string, metricsTar string) error {
 	}
 
 	promTemplatesDir := fmt.Sprintf("%s/%s", dir, promTemplates)
-	err = updateDeployment(promTemplatesDir, metricsTar, appLabel)
+	err = updateKustomization(promTemplatesDir, metricsTar, appLabel)
 	if err != nil {
 		log.Printf(err.Error())
 		return err
@@ -62,8 +62,8 @@ func createPrometheus(appLabel string, metricsTar string) error {
 	return nil
 }
 
-func updateDeployment(tmpDir string, metricsTar string, appLabel string) error {
-	// Replace path to fetch metrics
+func updateKustomization(tmpDir string, metricsTar string, appLabel string) error {
+	// Replace path to fetch metrics and set common labels
 	deploymentPath := fmt.Sprintf("%s/%s", tmpDir, "kustomization.yaml")
 	read, err := ioutil.ReadFile(deploymentPath)
 	if err != nil {

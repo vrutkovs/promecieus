@@ -5,17 +5,7 @@ resources:
   - deployment.yaml
   - route.yaml
   - service.yaml
-patchesStrategicMerge:
-- |-
-  apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-    name: prom
-  spec:
-    template:
-      spec:
-        containers:
-        - name: ci-fetcher
-          env:
-            - name: PROMTAR
-              value: "PROMTAR_VALUE"
+configMapGenerator:
+- name: promtar
+  literals:
+  - PROMTAR=PROMTAR_VALUE

@@ -97,7 +97,7 @@ func getPromRoute(appLabel string) (string, error) {
 		return "", err
 	}
 
-	exposeSvc := []string{"expose", string(service), "pod", "-l", fmt.Sprintf("app=%s", appLabel), "--name", appLabel}
+	exposeSvc := []string{"expose", string(service), "-l", fmt.Sprintf("app=%s", appLabel), "--name", appLabel}
 	output, err := exec.Command("oc", exposeSvc...).CombinedOutput()
 	log.Printf(string(output))
 	if err != nil {

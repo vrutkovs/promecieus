@@ -19,17 +19,26 @@ spec:
         - |
           #!/bin/bash
           set -exuo pipefail
+          {
+            echo "global:"
+            echo "  evaluation_interval: 30s"
+            echo "  scrape_interval: 30s"
+          } > prometheus.yml
           curl -sL ${PROMTAR} | tar xvz --no-overwrite-dir || true
-          pkill -HUP /bin/prometheus
+          kill -HUP $(fgrep "prometheus" /proc/*/comm -l | cut -d '/' -f 3)
+          sleep infinity
         env:
           - name: PROMTAR
             value: "PROMTAR_VALUE"
-        workingDir: /prometheus/
+        workingDir: /data/
         volumeMounts:
         - name: prometheus-storage-volume
-          mountPath: /prometheus/
+          mountPath: /data/
       - name: prometheus
         image: prom/prometheus:v2.12.0
+        args:
+          - --storage.tsdb.path=/prometheus
+          - --config.file=/prometheus/prometheus.yml
         ports:
         - name: webui
           containerPort: 9090
@@ -42,7 +51,7 @@ spec:
             memory: 500M
         volumeMounts:
         - name: prometheus-storage-volume
-          mountPath: /prometheus/
+          mountPath: /data/
       shareProcessNamespace: true
       volumes:
         - name: prometheus-storage-volume

@@ -6,5 +6,3 @@ resources:
   - 05-deploymentconfig.yaml
   - 06-service.yaml
   - 07-route.yaml
-  - 08-serviceaccount.yaml
-  - 09-clusterrolebinding.yaml

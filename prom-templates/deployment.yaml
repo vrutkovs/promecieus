@@ -19,7 +19,7 @@ spec:
         - |
           #!/bin/bash
           set -exuo pipefail
-          curl -sL ${PROMTAR} | tar --no-overwrite-dir xvz
+          curl -sL ${PROMTAR} | tar xvz --no-overwrite-dir || true
           pkill -HUP /bin/prometheus
         env:
           - name: PROMTAR

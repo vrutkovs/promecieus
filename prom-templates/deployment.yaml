@@ -10,23 +10,14 @@ spec:
       labels:
         app: prom
     spec:
-      containers:
+      initContainers:
       - name: ci-fetcher
         image: registry.fedoraproject.org/fedora:30
         command:
         - /bin/bash
         - -c
         - |
-          #!/bin/bash
-          set -exuo pipefail
-          {
-            echo "global:"
-            echo "  evaluation_interval: 30s"
-            echo "  scrape_interval: 30s"
-          } > prometheus.yml
           curl -sL ${PROMTAR} | tar xvz --no-overwrite-dir || true
-          kill -HUP $(fgrep "prometheus" /proc/*/comm -l | cut -d '/' -f 3)
-          sleep infinity
         env:
           - name: PROMTAR
             value: "PROMTAR_VALUE"
@@ -34,6 +25,7 @@ spec:
         volumeMounts:
         - name: prometheus-storage-volume
           mountPath: /data/
+      containers:
       - name: prometheus
         image: prom/prometheus:v2.12.0
         args:

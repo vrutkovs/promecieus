@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: prom
+  namespace: prom-test
+  labels:
+    app: prom
+spec:
+  ports:
+    - port: 9090
+      protocol: TCP
+      name: webui
+  selector:
+    app: prom

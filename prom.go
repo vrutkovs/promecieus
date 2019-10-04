@@ -18,7 +18,7 @@ func (e *Env) generateNamespace() string {
 	for i := range b {
 		b[i] = charset[seededRand.Intn(len(charset))]
 	}
-	return fmt.Sprintf("%s-%s", namespacePrefix, string(b))
+	return fmt.Sprintf("%s%s", namespacePrefix, string(b))
 }
 
 // Create a temp kustomize file and apply manifests

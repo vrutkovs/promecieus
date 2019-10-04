@@ -82,7 +82,28 @@ func (e *Env) createPrometheus(namespace string) error {
 }
 
 // Upload metrics tar to prometheus
-func (e *Env) uploadMetrics(namespace string, metricsTarUrl string) {}
+func (e *Env) uploadMetrics(namespace string, metricsTarUrl string) error {
+	promPodNameCmd := []string{"-n", namespace, "get", "pods", "-o", "name"}
+	promPodName, err := exec.Command("oc", promPodNameCmd...).Output()
+	if err != nil {
+		log.Printf(string(promPodName))
+		return err
+	}
+	wgetInPod := []string{"-n", namespace, "exec", "pod", string(promPodName), "wget", metricsTarUrl}
+	output, err := exec.Command("oc", wgetInPod...).Output()
+	if err != nil {
+		log.Printf(string(output))
+		return err
+	}
+
+	unpackInPod := []string{"-n", namespace, "exec", "pod", string(promPodName), "tar", "-xvz", promTarName}
+	output, err = exec.Command("oc", unpackInPod...).Output()
+	if err != nil {
+		log.Printf(string(output))
+		return err
+	}
+	return nil
+}
 
 // Get prometheus route URL
 func (e *Env) getPromRoute(namespace string) {}

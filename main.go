@@ -9,8 +9,10 @@ import (
 )
 
 const (
-	prowPrefix = "https://prow.svc.ci.openshift.org/view/"
-	gcsPrefix  = "https://gcsweb-ci.svc.ci.openshift.org/"
+	prowPrefix  = "https://prow.svc.ci.openshift.org/view/"
+	gcsPrefix   = "https://gcsweb-ci.svc.ci.openshift.org/"
+	promTarName = "prometheus.tar"
+	promTarPath = "artifacts/e2e-aws/metrics/"
 )
 
 // Env holds references to useful objects in router funcs
@@ -26,7 +28,7 @@ func (e *Env) create(c *gin.Context) {
 
 	// Get a link to prometheus metadata
 	// TODO: aws is hardcoded :/
-	metricsTar := fmt.Sprintf("%s/artifacts/e2e-aws/metrics/prometheus.tar", artifactsUrl)
+	metricsTar := fmt.Sprintf("%s/%s/%s", artifactsUrl, promTarPath, promTarName)
 	log.Printf("metricsTar: %s", metricsTar)
 
 	// Create namespace
@@ -36,11 +38,20 @@ func (e *Env) create(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": err.Error(),
 		})
-	} else {
-		c.JSON(http.StatusOK, gin.H{
-			"message": fmt.Sprintf("foo %s %s", metricsTar, ns),
-		})
+		return
 	}
+
+	err = e.uploadMetrics(ns, metricsTar)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("foo %s %s", metricsTar, ns),
+	})
 }
 
 func main() {

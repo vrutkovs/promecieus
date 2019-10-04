@@ -61,6 +61,7 @@ func createPrometheus(appLabel string, metricsTar string) error {
 	return nil
 }
 
+// Set common label and metrics Tar in the kustomize apps
 func updateKustomization(tmpDir string, metricsTar string, appLabel string) error {
 	// Replace path to fetch metrics and set common labels
 	deploymentPath := fmt.Sprintf("%s/%s", tmpDir, "kustomization.yaml")
@@ -80,7 +81,7 @@ func updateKustomization(tmpDir string, metricsTar string, appLabel string) erro
 // Get prometheus route URL
 func getPromRoute(appLabel string) (string, error) {
 	log.Println("Waiting for pods to rollout")
-	podRolledOut := []string{"wait", "pod", "--for=condition=Ready", "pod", "-l", fmt.Sprintf("app=%s", appLabel)}
+	podRolledOut := []string{"wait", "pod", "--for=condition=Ready", "-l", fmt.Sprintf("app=%s", appLabel)}
 	output, err := exec.Command("oc", podRolledOut...).CombinedOutput()
 	log.Printf(string(output))
 	if err != nil {

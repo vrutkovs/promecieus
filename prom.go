@@ -80,25 +80,25 @@ func updateKustomization(tmpDir string, metricsTar string, appLabel string) erro
 
 // Get prometheus route URL
 func getPromRoute(appLabel string) (string, error) {
-	log.Println("Waiting for pods to rollout")
-	podRolledOut := []string{"wait", "pod", "--timeout=30m", "--for=condition=Ready", "-l", fmt.Sprintf("app=%s", appLabel)}
-	output, err := exec.Command("oc", podRolledOut...).CombinedOutput()
-	log.Printf(string(output))
-	if err != nil {
-		return "", err
-	}
-	log.Println("Pods are ready")
+	// log.Println("Waiting for pods to rollout")
+	// podRolledOut := []string{"wait", "pod", "--timeout=30m", "--for=condition=Ready", "-l", fmt.Sprintf("app=%s", appLabel)}
+	// output, err := exec.Command("oc", podRolledOut...).CombinedOutput()
+	// log.Printf(string(output))
+	// if err != nil {
+	// 	return "", err
+	// }
+	// log.Println("Pods are ready")
 
 	log.Println("Fetching service name")
 	svcCmd := []string{"get", "-o", "name", "service", "-l", fmt.Sprintf("app=%s", appLabel)}
 	service, err := exec.Command("oc", svcCmd...).Output()
-	log.Printf(string(output))
+	log.Printf(string(service))
 	if err != nil {
 		return "", err
 	}
 
 	exposeSvc := []string{"expose", string(service), "pod", "-l", fmt.Sprintf("app=%s", appLabel), "--name", appLabel}
-	output, err = exec.Command("oc", exposeSvc...).CombinedOutput()
+	output, err := exec.Command("oc", exposeSvc...).CombinedOutput()
 	log.Printf(string(output))
 	if err != nil {
 		return "", err

@@ -1,0 +1,11 @@
+namespace: pod-hunt
+resources:
+  - 01-namespace.yaml
+  - 02-imagestream.yaml
+  - 03-buildconfig-src.yaml
+  - 04-buildconfig-bin.yaml
+  - 05-deploymentconfig.yaml
+  - 06-service.yaml
+  - 07-route.yaml
+  - 08-serviceaccount.yaml
+  - 09-clusterrolebinding.yaml

@@ -32,8 +32,6 @@ func createPrometheus(namespace string, metricsTar string) error {
 	// Create namespace
 	cmd := exec.Command("oc", "new-project", namespace)
 	output, err := cmd.CombinedOutput()
-	log.Printf(string(output))
-
 	if err != nil {
 		log.Printf(err.Error())
 		return err
@@ -46,15 +44,35 @@ func createPrometheus(namespace string, metricsTar string) error {
 		log.Printf(err.Error())
 		return err
 	}
-	promTemplatesDir := fmt.Sprintf("%s/%s", dir, promTemplates)
 
 	err = RestoreAssets(dir, promTemplates)
 	if err != nil {
 		log.Printf(err.Error())
 		return err
 	}
+
+	promTemplatesDir := fmt.Sprintf("%s/%s", dir, promTemplates)
+	err = updateDeployment(promTemplatesDir, metricsTar)
+	if err != nil {
+		log.Printf(err.Error())
+		return err
+	}
+
+	// Apply manifests
+	cmd = exec.Command("oc", "-n", namespace, "apply", "-f", promTemplatesDir)
+	output, err = cmd.CombinedOutput()
+	log.Printf(string(output))
+	if err != nil {
+		log.Printf(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func updateDeployment(tmpDir string, metricsTar string) error {
 	// Replace path to fetch metrics
-	deploymentPath := fmt.Sprintf("%s/%s", promTemplatesDir, "deployment.yaml")
+	deploymentPath := fmt.Sprintf("%s/%s", tmpDir, "deployment.yaml")
 	read, err := ioutil.ReadFile(deploymentPath)
 	if err != nil {
 		return err
@@ -65,17 +83,6 @@ func createPrometheus(namespace string, metricsTar string) error {
 		return err
 	}
 	log.Println("deployment was rewritten")
-
-	// Apply kustomization
-	cmd = exec.Command("oc", "-n", namespace, "apply", "-f", promTemplatesDir)
-	output, err = cmd.CombinedOutput()
-	log.Printf(string(output))
-
-	if err != nil {
-		log.Printf(err.Error())
-		return err
-	}
-
 	return nil
 }
 

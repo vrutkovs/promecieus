@@ -18,9 +18,6 @@ spec:
         - -c
         - |
           curl -sL ${PROMTAR} | tar xvz --no-overwrite-dir || true
-        env:
-          - name: PROMTAR
-            value: "PROMTAR_VALUE"
         workingDir: /data/
         volumeMounts:
         - name: prometheus-storage-volume

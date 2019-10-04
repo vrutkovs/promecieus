@@ -28,8 +28,8 @@ func create(c *gin.Context) {
 	log.Printf("metricsTar: %s", metricsTar)
 
 	// Create namespace
-	ns := generateNamespace()
-	err := createPrometheus(ns, metricsTar)
+	appLabel := generateAppLabel()
+	err := createPrometheus(appLabel, metricsTar)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": err.Error(),
@@ -38,7 +38,7 @@ func create(c *gin.Context) {
 	}
 	// TODO: Destroy namespace if error
 
-	promRoute, err := getPromRoute(ns)
+	promRoute, err := getPromRoute(appLabel)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": err.Error(),

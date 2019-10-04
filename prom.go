@@ -11,35 +11,26 @@ import (
 	"time"
 )
 
-const namespacePrefix = "prom-"
+const appLabelPrefix = "prom-"
 const charset = "abcdefghijklmnopqrstuvwxyz"
 const randLength = 8
 const promTemplates = "prom-templates"
 
-// Generate random namespace name
-func generateNamespace() string {
+// Generate random app label name
+func generateAppLabel() string {
 	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	b := make([]byte, randLength)
 	for i := range b {
 		b[i] = charset[seededRand.Intn(len(charset))]
 	}
-	return fmt.Sprintf("%s%s", namespacePrefix, string(b))
+	return fmt.Sprintf("%s%s", appLabelPrefix, string(b))
 }
 
 // Create a temp kustomize file and apply manifests
-func createPrometheus(namespace string, metricsTar string) error {
-	// Create namespace
-	cmd := exec.Command("oc", "new-project", namespace)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Printf(err.Error())
-		return err
-	}
-	log.Printf("Created project %s", namespace)
-
+func createPrometheus(appLabel string, metricsTar string) error {
 	// Make temp dir for assets
-	dir, err := ioutil.TempDir("", namespace)
+	dir, err := ioutil.TempDir("", appLabel)
 	defer os.RemoveAll(dir)
 	if err != nil {
 		log.Printf(err.Error())
@@ -53,15 +44,15 @@ func createPrometheus(namespace string, metricsTar string) error {
 	}
 
 	promTemplatesDir := fmt.Sprintf("%s/%s", dir, promTemplates)
-	err = updateDeployment(promTemplatesDir, metricsTar)
+	err = updateDeployment(promTemplatesDir, metricsTar, appLabel)
 	if err != nil {
 		log.Printf(err.Error())
 		return err
 	}
 
-	// Apply manifests
-	cmd = exec.Command("oc", "-n", namespace, "apply", "-f", promTemplatesDir)
-	output, err = cmd.CombinedOutput()
+	// Apply manifests via kustomize
+	cmd := exec.Command("oc", "apply", "-k", promTemplatesDir)
+	output, err := cmd.CombinedOutput()
 	log.Printf(string(output))
 	if err != nil {
 		log.Printf(err.Error())
@@ -71,14 +62,15 @@ func createPrometheus(namespace string, metricsTar string) error {
 	return nil
 }
 
-func updateDeployment(tmpDir string, metricsTar string) error {
+func updateDeployment(tmpDir string, metricsTar string, appLabel string) error {
 	// Replace path to fetch metrics
-	deploymentPath := fmt.Sprintf("%s/%s", tmpDir, "deployment.yaml")
+	deploymentPath := fmt.Sprintf("%s/%s", tmpDir, "kustomization.yaml")
 	read, err := ioutil.ReadFile(deploymentPath)
 	if err != nil {
 		return err
 	}
 	newContents := strings.Replace(string(read), "PROMTAR_VALUE", metricsTar, -1)
+	newContents = strings.Replace(newContents, "COMMON_LABEL", appLabel, -1)
 	err = ioutil.WriteFile(deploymentPath, []byte(newContents), 0)
 	if err != nil {
 		return err
@@ -87,29 +79,24 @@ func updateDeployment(tmpDir string, metricsTar string) error {
 	return nil
 }
 
-func runOcCommand(namespace string, args []string) (string, error) {
-	namespacedArgs := append([]string{"-n", namespace}, args...)
-	output, err := exec.Command("oc", namespacedArgs...).Output()
+// Get prometheus route URL
+func getPromRoute(appLabel string) (string, error) {
+	deploymentRolledOut := []string{"wait", "--for=condition=Ready", "pod"}
+	output, err := exec.Command("oc", deploymentRolledOut...).Output()
 	log.Printf(string(output))
 	if err != nil {
 		return "", err
 	}
-	return string(output), nil
-}
 
-// Get prometheus route URL
-func getPromRoute(namespace string) (string, error) {
-	deploymentRolledOut := []string{"wait", "--for=condition=Ready", "--all", "pod"}
-	_, err := runOcCommand(namespace, deploymentRolledOut)
+	routeCmd := []string{"get", "-o", "jsonpath=https://{.spec.host}", "route", "-l", fmt.Sprintf("app=%s", appLabel)}
+	route, err := exec.Command("oc", routeCmd...).Output()
+	log.Printf(string(output))
+	if err != nil {
+		return "", err
+	}
 	if err != nil {
 		return "", err
 	}
 
-	routeCmd := []string{"get", "-o", "jsonpath=https://{.spec.host}", "route/prom"}
-	route, err := runOcCommand(namespace, routeCmd)
-	if err != nil {
-		return "", err
-	}
-
-	return route, nil
+	return string(route), nil
 }

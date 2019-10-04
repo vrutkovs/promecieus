@@ -99,7 +99,7 @@ func runOcCommand(namespace string, args []string) (string, error) {
 
 // Get prometheus route URL
 func getPromRoute(namespace string) (string, error) {
-	deploymentRolledOut := []string{"wait", "--for=condition=Available", "deployment/prom"}
+	deploymentRolledOut := []string{"wait", "--for=condition=Ready", "--all", "pod"}
 	_, err := runOcCommand(namespace, deploymentRolledOut)
 	if err != nil {
 		return "", err

@@ -108,7 +108,6 @@ func getPromRoute(appLabel string) (string, error) {
 	log.Println("Fetching route host")
 	routeCmd := []string{"get", "route", appLabel, "-o", "jsonpath=http://{.spec.host}"}
 	route, err := exec.Command("oc", routeCmd...).Output()
-	log.Printf(string(output))
 	if err != nil {
 		return "", err
 	}

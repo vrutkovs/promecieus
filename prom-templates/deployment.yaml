@@ -45,10 +45,10 @@ spec:
         resources:
           requests:
             cpu: 500m
-            memory: 500M
+            memory: 2Gi
           limits:
             cpu: 500m
-            memory: 500M
+            memory: 2Gi
         volumeMounts:
         - name: prometheus-storage-volume
           mountPath: /data/

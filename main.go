@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+const (
+	prowPrefix = "https://prow.svc.ci.openshift.org/view/"
+	gcsPrefix  = "https://gcsweb-ci.svc.ci.openshift.org/"
+)
+
 // Env holds references to useful objects in router funcs
 type Env struct{}
 
@@ -16,7 +21,7 @@ func (e *Env) create(c *gin.Context) {
 	log.Printf("url: %s", url)
 
 	// Get artifacts link
-	artifactsUrl := strings.Replace(url, "https://prow.svc.ci.openshift.org/view/", "https://gcsweb-ci.svc.ci.openshift.org", -1)
+	artifactsUrl := strings.Replace(url, prowPrefix, gcsPrefix, -1)
 	log.Printf("artifacts: %s", artifactsUrl)
 
 	// Get a link to prometheus metadata

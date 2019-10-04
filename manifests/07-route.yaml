@@ -1,14 +1,14 @@
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
-  name: conumser
-  namespace: conumser
+  name: promecieus
+  namespace: promecieus
 spec:
-  host: conumser.vrutkovs.eu
+  host: promecieus.vrutkovs.eu
   subdomain: ''
   to:
     kind: Service
-    name: conumser
+    name: promecieus
     weight: 100
   port:
     targetPort: 8080

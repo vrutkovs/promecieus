@@ -34,8 +34,8 @@ func create(c *gin.Context) {
 		})
 		return
 	}
-	// TODO: Destroy namespace if error
 
+	// Return route name
 	promRoute, err := getPromRoute(appLabel)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

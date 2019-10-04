@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -39,8 +38,8 @@ func (e *Env) createPrometheus(namespace string) error {
 	}
 
 	// Make temp dir for assets
-	dir, err := ioutil.TempDir(os.TempDir(), namespace)
-	defer os.RemoveAll(dir)
+	dir, err := ioutil.TempDir("", namespace)
+	// defer os.RemoveAll(dir)
 	if err != nil {
 		log.Printf(err.Error())
 		return err

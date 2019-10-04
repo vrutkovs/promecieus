@@ -75,7 +75,6 @@ func updateDeployment(tmpDir string, metricsTar string, appLabel string) error {
 	if err != nil {
 		return err
 	}
-	log.Println("deployment was rewritten")
 	return nil
 }
 

@@ -3,7 +3,6 @@ commonLabels:
 namePrefix: COMMON_LABEL-
 resources:
   - deployment.yaml
-  - route.yaml
   - service.yaml
 configMapGenerator:
 - name: promtar

@@ -7,4 +7,4 @@ resources:
   - 06-service.yaml
   - 07-route.yaml
   - 08-serviceaccount.yaml
-  - 09-clusterrolebinding.yaml
+  - 09-rolebinding.yaml

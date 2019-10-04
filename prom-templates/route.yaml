@@ -2,7 +2,6 @@ kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
   name: prom
-  namespace: prom-test
 spec:
   to:
     kind: Service

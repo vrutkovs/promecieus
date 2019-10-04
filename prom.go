@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-const appLabelPrefix = "prom-"
 const charset = "abcdefghijklmnopqrstuvwxyz"
 const randLength = 8
 const promTemplates = "prom-templates"
@@ -24,7 +23,7 @@ func generateAppLabel() string {
 	for i := range b {
 		b[i] = charset[seededRand.Intn(len(charset))]
 	}
-	return fmt.Sprintf("%s%s", appLabelPrefix, string(b))
+	return string(b)
 }
 
 // Create a temp kustomize file and apply manifests

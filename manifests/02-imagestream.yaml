@@ -17,7 +17,7 @@ spec:
       type: Local
   - from:
       kind: DockerImage
-      name: http://quay.io/openshift/origin-cli:4.2
+      name: quay.io/openshift/origin-cli:4.2
     name: cli
     referencePolicy:
       type: Source

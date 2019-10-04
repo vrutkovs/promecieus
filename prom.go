@@ -13,6 +13,7 @@ import (
 const namespacePrefix = "prom-"
 const charset = "abcdefghijklmnopqrstuvwxyz"
 const randLength = 8
+const promTemplates = "prom-templates"
 
 // Generate random namespace name
 func (e *Env) generateNamespace() string {
@@ -45,8 +46,9 @@ func (e *Env) createPrometheus(namespace string) error {
 		return err
 	}
 	log.Println(dir)
+	promTemplatesDir := fmt.Sprintf("%s/%s", dir, promTemplates)
 
-	err = RestoreAssets(dir, "prom-templates")
+	err = RestoreAssets(dir, promTemplates)
 	if err != nil {
 		log.Printf(err.Error())
 		return err
@@ -54,7 +56,7 @@ func (e *Env) createPrometheus(namespace string) error {
 	// Replace namespace in kustomization.yaml
 	newNamespaceSetting := fmt.Sprintf("namespace: %s", namespace)
 
-	kustomizationPath := fmt.Sprintf("%s/%s", dir, "kustomization.yaml")
+	kustomizationPath := fmt.Sprintf("%s/%s", promTemplatesDir, "kustomization.yaml")
 	read, err := ioutil.ReadFile(kustomizationPath)
 	if err != nil {
 		return err
@@ -67,7 +69,7 @@ func (e *Env) createPrometheus(namespace string) error {
 	log.Println("kustomize was rewritten")
 
 	// Apply kustomization
-	cmd = exec.Command("oc", "apply", "-k", dir)
+	cmd = exec.Command("oc", "apply", "-k", promTemplatesDir)
 	output, err = cmd.CombinedOutput()
 	log.Printf(string(output))
 

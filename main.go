@@ -9,20 +9,20 @@ import (
 )
 
 // Env holds references to useful objects in router funcs
-type Env struct {}
+type Env struct{}
 
 func (e *Env) create(c *gin.Context) {
 	url := c.PostForm("url")
-	log.Println(fmt.Sprintf("url: %s", url))
+	log.Printf("url: %s", url)
 
 	// Get artifacts link
 	artifactsUrl := strings.ReplaceAll(url, "https://prow.svc.ci.openshift.org/view/", "https://gcsweb-ci.svc.ci.openshift.org")
-	log.Println(fmt.Sprintf("artifacts: %s", artifactsUrl))
+	log.Printf("artifacts: %s", artifactsUrl)
 
 	// Get a link to prometheus metadata
 	// TODO: aws is hardcoded :/
 	metricsTar := fmt.Sprintf("%s/artifacts/e2e-aws/metrics/", artifactsUrl)
-	log.Println(fmt.Sprintf("metricsTar: %s", metricsTar))
+	log.Printf("metricsTar: %s", metricsTar)
 
 	// Create namespace
 	ns := e.generateNamespace()

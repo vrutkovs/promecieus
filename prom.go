@@ -57,6 +57,7 @@ func createPrometheus(appLabel string, metricsTar string) error {
 		log.Printf(err.Error())
 		return err
 	}
+	log.Println("App deployed")
 
 	return nil
 }
@@ -79,19 +80,35 @@ func updateKustomization(tmpDir string, metricsTar string, appLabel string) erro
 
 // Get prometheus route URL
 func getPromRoute(appLabel string) (string, error) {
-	deploymentRolledOut := []string{"wait", "--for=condition=Ready", "pod"}
+	log.Println("Waiting for pods to rollout")
+	deploymentRolledOut := []string{"wait", "--for=condition=Ready", "pod", "-l", appLabel}
 	output, err := exec.Command("oc", deploymentRolledOut...).Output()
 	log.Printf(string(output))
 	if err != nil {
 		return "", err
 	}
+	log.Println("Pods are ready")
 
-	routeCmd := []string{"get", "-o", "jsonpath=https://{.spec.host}", "route", "-l", fmt.Sprintf("app=%s", appLabel)}
-	route, err := exec.Command("oc", routeCmd...).Output()
+	log.Println("Fetching service name")
+	svcCmd := []string{"get", "-o", "name", "service", "-l", fmt.Sprintf("app=%s", appLabel)}
+	service, err := exec.Command("oc", svcCmd...).Output()
 	log.Printf(string(output))
 	if err != nil {
 		return "", err
 	}
+
+	exposeSvc := []string{"expose", string(service), "pod", "-l", appLabel, "--name", appLabel}
+	output, err = exec.Command("oc", exposeSvc...).Output()
+	log.Printf(string(output))
+	if err != nil {
+		return "", err
+	}
+	log.Println("Route created")
+
+	log.Println("Fetching route host")
+	routeCmd := []string{"get", "-o", "jsonpath=https://{.spec.host}", "route", "-l", fmt.Sprintf("app=%s", appLabel)}
+	route, err := exec.Command("oc", routeCmd...).Output()
+	log.Printf(string(output))
 	if err != nil {
 		return "", err
 	}

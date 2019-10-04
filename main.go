@@ -27,6 +27,7 @@ func create(c *gin.Context) {
 
 	// Create namespace
 	appLabel := generateAppLabel()
+	log.Printf("Generating app %s", appLabel)
 	err := createPrometheus(appLabel, metricsTar)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

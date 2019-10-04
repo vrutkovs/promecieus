@@ -1,59 +1,44 @@
 package main
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
-	"log"
 	"net/http"
-	"strings"
 )
 
-const (
-	prowPrefix  = "https://prow.svc.ci.openshift.org/view/"
-	gcsPrefix   = "https://gcsweb-ci.svc.ci.openshift.org/"
-	promTarPath = "artifacts/e2e-aws/metrics/prometheus.tar"
-)
+// health is k8s endpoint for liveness check
+func health(c *gin.Context) {
+	c.String(http.StatusOK, "")
+}
 
-func create(c *gin.Context) {
-	url := c.PostForm("url")
+// show index page
+func index(c *gin.Context) {
+	c.HTML(http.StatusOK, "html/index.html", gin.H{})
+}
 
-	// Get artifacts link
-	artifactsUrl := strings.Replace(url, prowPrefix, gcsPrefix, -1)
-
-	// Get a link to prometheus metadata
-	// TODO: aws is hardcoded :/
-	metricsTar := fmt.Sprintf("%s/%s", artifactsUrl, promTarPath)
-	log.Printf("metricsTar: %s", metricsTar)
-
-	// Create namespace
-	appLabel := generateAppLabel()
-	log.Printf("Generating app %s", appLabel)
-	err := createPrometheus(appLabel, metricsTar)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
-		})
-		return
-	}
-
-	// Return route name
-	promRoute, err := getPromRoute(appLabel)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": promRoute,
-	})
+func jsx(c *gin.Context) {
+	c.HTML(http.StatusOK, "html/app.jsx", gin.H{})
 }
 
 func main() {
-	r := gin.Default()
-	// create prometheus instance
-	r.POST("/create", create)
+	server := &ServerSettings{}
+	r := gin.New()
+
+	// Load templates from bin assets
+	t, err := loadTemplate()
+	if err != nil {
+		panic(err)
+	}
+	r.SetHTMLTemplate(t)
+
+	// Don't log k8s health endpoint
+	r.Use(
+		gin.LoggerWithWriter(gin.DefaultWriter, "/health"),
+		gin.Recovery(),
+	)
+	r.GET("/health", health)
+	r.GET("/", index)
+	r.GET("/app.jsx", jsx)
+	r.GET("/ws/status", server.handleStatusViaWS)
 
 	r.Run(":8080")
 }

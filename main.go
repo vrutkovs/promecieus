@@ -26,7 +26,7 @@ func (e *Env) create(c *gin.Context) {
 
 	// Get a link to prometheus metadata
 	// TODO: aws is hardcoded :/
-	metricsTar := fmt.Sprintf("%s/artifacts/e2e-aws/metrics/", artifactsUrl)
+	metricsTar := fmt.Sprintf("%s/artifacts/e2e-aws/metrics/prometheus.tar", artifactsUrl)
 	log.Printf("metricsTar: %s", metricsTar)
 
 	// Create namespace

@@ -17,7 +17,7 @@ const randLength = 8
 const promTemplates = "prom-templates"
 
 // Generate random namespace name
-func (e *Env) generateNamespace() string {
+func generateNamespace() string {
 	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	b := make([]byte, randLength)
@@ -28,7 +28,7 @@ func (e *Env) generateNamespace() string {
 }
 
 // Create a temp kustomize file and apply manifests
-func (e *Env) createPrometheus(namespace string, metricsTar string) error {
+func createPrometheus(namespace string, metricsTar string) error {
 	// Create namespace
 	cmd := exec.Command("oc", "new-project", namespace)
 	output, err := cmd.CombinedOutput()
@@ -90,7 +90,7 @@ func runOcCommand(namespace string, args []string) (string, error) {
 }
 
 // Get prometheus route URL
-func (e *Env) getPromRoute(namespace string) (string, error) {
+func getPromRoute(namespace string) (string, error) {
 	deploymentRolledOut := []string{"wait", "--for=condition=Available", "deployment/prom"}
 	_, err := runOcCommand(namespace, deploymentRolledOut)
 	if err != nil {

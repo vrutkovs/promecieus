@@ -14,10 +14,7 @@ const (
 	promTarPath = "artifacts/e2e-aws/metrics/prometheus.tar"
 )
 
-// Env holds references to useful objects in router funcs
-type Env struct{}
-
-func (e *Env) create(c *gin.Context) {
+func create(c *gin.Context) {
 	url := c.PostForm("url")
 	log.Printf("url: %s", url)
 
@@ -31,8 +28,8 @@ func (e *Env) create(c *gin.Context) {
 	log.Printf("metricsTar: %s", metricsTar)
 
 	// Create namespace
-	ns := e.generateNamespace()
-	err := e.createPrometheus(ns, metricsTar)
+	ns := generateNamespace()
+	err := createPrometheus(ns, metricsTar)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": err.Error(),
@@ -41,7 +38,7 @@ func (e *Env) create(c *gin.Context) {
 	}
 	// TODO: Destroy namespace if error
 
-	promRoute, err := e.getPromRoute(ns)
+	promRoute, err := getPromRoute(ns)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": err.Error(),
@@ -55,15 +52,9 @@ func (e *Env) create(c *gin.Context) {
 }
 
 func main() {
-	// Get apps domain from the route
-
-	// setup webhook listener
 	r := gin.Default()
-
-	env := &Env{}
-
 	// create prometheus instance
-	r.POST("/create", env.create)
+	r.POST("/create", create)
 
 	r.Run(":8080")
 }

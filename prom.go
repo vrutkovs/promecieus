@@ -81,32 +81,47 @@ func (e *Env) createPrometheus(namespace string) error {
 	return nil
 }
 
+func runOcCommand(namespace string, args []string) (string, error) {
+	namespacedArgs := append([]string{"-n", namespace}, args...)
+	output, err := exec.Command("oc", namespacedArgs...).Output()
+	log.Printf(string(output))
+	if err != nil {
+		return "", err
+	}
+	return string(output), nil
+}
+
 // Upload metrics tar to prometheus
 func (e *Env) uploadMetrics(namespace string, metricsTarUrl string) error {
-	promPodNameCmd := []string{"-n", namespace, "get", "pods", "-o", "name"}
-	promPodName, err := exec.Command("oc", promPodNameCmd...).Output()
+	deploymentRolledOut := []string{"wait", "--for=condition=Available", "deployment/prom"}
+	_, err := runOcCommand(namespace, deploymentRolledOut)
 	if err != nil {
-		log.Printf(string(promPodName))
-		return err
-	}
-	wgetInPod := []string{"-n", namespace, "exec", "pod", string(promPodName), "wget", metricsTarUrl}
-	output, err := exec.Command("oc", wgetInPod...).Output()
-	if err != nil {
-		log.Printf(string(output))
 		return err
 	}
 
-	unpackInPod := []string{"-n", namespace, "exec", "pod", string(promPodName), "tar", "-xvz", promTarName}
-	output, err = exec.Command("oc", unpackInPod...).Output()
+	promPodNameCmd := []string{"get", "pods", "-o", "name"}
+	promPodName, err := runOcCommand(namespace, promPodNameCmd)
 	if err != nil {
-		log.Printf(string(output))
 		return err
 	}
 
-	restartProm := []string{"-n", namespace, "exec", "kill", "-HUP", "1"}
-	output, err = exec.Command("oc", restartProm...).Output()
+	execPod := []string{"exec", "pod", string(promPodName)}
+
+	wgetInPod := append(execPod, "wget", metricsTarUrl)
+	_, err = runOcCommand(namespace, wgetInPod)
 	if err != nil {
-		log.Printf(string(output))
+		return err
+	}
+
+	unpackInPod := append(execPod, "tar", "-xvz", promTarName)
+	_, err = runOcCommand(namespace, unpackInPod)
+	if err != nil {
+		return err
+	}
+
+	restartProm := []string{"exec", "kill", "-HUP", "1"}
+	_, err = runOcCommand(namespace, restartProm)
+	if err != nil {
 		return err
 	}
 	return nil

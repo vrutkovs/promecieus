@@ -102,6 +102,13 @@ func (e *Env) uploadMetrics(namespace string, metricsTarUrl string) error {
 		log.Printf(string(output))
 		return err
 	}
+
+	restartProm := []string{"-n", namespace, "exec", "kill", "-HUP", "1"}
+	output, err = exec.Command("oc", restartProm...).Output()
+	if err != nil {
+		log.Printf(string(output))
+		return err
+	}
 	return nil
 }
 

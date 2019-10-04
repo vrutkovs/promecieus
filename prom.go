@@ -12,7 +12,7 @@ import (
 )
 
 const namespacePrefix = "prom-"
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const charset = "abcdefghijklmnopqrstuvwxyz"
 const randLength = 8
 
 // Generate random namespace name

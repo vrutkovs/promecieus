@@ -36,6 +36,7 @@ func createPrometheus(namespace string, metricsTar string) error {
 		log.Printf(err.Error())
 		return err
 	}
+	log.Printf("Created project %s", namespace)
 
 	// Make temp dir for assets
 	dir, err := ioutil.TempDir("", namespace)

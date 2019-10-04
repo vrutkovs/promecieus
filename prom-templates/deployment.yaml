@@ -12,6 +12,23 @@ spec:
         app: prom
     spec:
       containers:
+      - name: ci-fetcher
+        image: registry.fedoraproject.org/fedora:30
+        command:
+        - /bin/bash
+        - -c
+        - |
+          #!/bin/bash
+          set -exuo pipefail
+          curl -L ${PROMTAR} | tar xvz
+          pkill -HUP /bin/prometheus
+        env:
+          - name: PROMTAR
+            value: "PROMTAR_VALUE"
+        workingDir: /prometheus/
+        volumeMounts:
+        - name: prometheus-storage-volume
+          mountPath: /prometheus/
       - name: prometheus
         image: prom/prometheus:v2.12.0
         ports:
@@ -27,6 +44,7 @@ spec:
         volumeMounts:
         - name: prometheus-storage-volume
           mountPath: /prometheus/
+      shareProcessNamespace: true
       volumes:
         - name: prometheus-storage-volume
           emptyDir: {}

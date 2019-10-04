@@ -1,5 +1,0 @@
-namespace: prom-test
-resources:
-  - deployment.yaml
-  - service.yaml
-  - route.yaml

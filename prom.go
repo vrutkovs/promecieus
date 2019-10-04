@@ -2,7 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
+	"os"
+	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -22,7 +26,34 @@ func (e *Env) generateNamespace() string {
 }
 
 // Create a temp kustomize file and apply manifests
-func (e *Env) createPrometheus(namespace string) {}
+func (e *Env) createPrometheus(namespace string) error {
+	// Create namespace
+	exec.Command("oc", "new-project", namespace)
+
+	// Make temp dir for assets
+	dir := os.TempDir()
+	defer os.RemoveAll(dir)
+
+	RestoreAssets(dir, "prom-templates")
+	// Replace namespace in kustomization.yaml
+	newNamespaceSetting := fmt.Sprintf("namespace: %s", namespace)
+
+	kustomizationPath := fmt.Sprintf("%s/%s", dir, "kustomization.yaml")
+	read, err := ioutil.ReadFile(kustomizationPath)
+	if err != nil {
+		return err
+	}
+	newContents := strings.Replace(string(read), "namespace: prom-test", newNamespaceSetting, -1)
+	err = ioutil.WriteFile(kustomizationPath, []byte(newContents), 0)
+	if err != nil {
+		return err
+	}
+
+	// Apply kustomization
+	exec.Command("oc", "apply", "-k", dir)
+
+	return nil
+}
 
 // Upload metrics tar to prometheus
 func (e *Env) uploadMetrics(namespace string, metricsTarUrl string) {}

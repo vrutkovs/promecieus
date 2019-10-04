@@ -26,6 +26,12 @@ func (e *Env) create(c *gin.Context) {
 
 	// Create namespace
 	ns := e.generateNamespace()
+	err := e.createPrometheus(ns)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": fmt.Sprintf("%v", err),
+		})
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("foo %s %s", metricsTar, ns),

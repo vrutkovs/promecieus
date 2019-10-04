@@ -105,7 +105,7 @@ func getPromRoute(namespace string) (string, error) {
 		return "", err
 	}
 
-	routeCmd := []string{"get", "-o", "jsonpath='{.spec.host}'", "route/prom"}
+	routeCmd := []string{"get", "-o", "jsonpath=https://{.spec.host}", "route/prom"}
 	route, err := runOcCommand(namespace, routeCmd)
 	if err != nil {
 		return "", err

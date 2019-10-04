@@ -23,7 +23,7 @@ func main() {
 	env := &Env{}
 
 	// create prometheus instance
-	r.POST("/create/:url", env.create)
+	r.POST("/create", env.create)
 
 	r.Run(":8080")
 }

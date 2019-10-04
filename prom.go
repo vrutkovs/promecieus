@@ -92,12 +92,13 @@ func getPromRoute(appLabel string) (string, error) {
 	log.Println("Fetching service name")
 	svcCmd := []string{"get", "-o", "name", "service", "-l", fmt.Sprintf("app=%s", appLabel)}
 	service, err := exec.Command("oc", svcCmd...).Output()
-	log.Printf(string(service))
 	if err != nil {
 		return "", err
 	}
+	serviceName := strings.Split(string(service), "\n")[0]
 
-	exposeSvc := []string{"expose", string(service), "-l", fmt.Sprintf("app=%s", appLabel), "--name", appLabel}
+	log.Printf("Exposing service %s", serviceName)
+	exposeSvc := []string{"expose", serviceName, "-l", fmt.Sprintf("app=%s", appLabel), "--name", appLabel}
 	output, err := exec.Command("oc", exposeSvc...).CombinedOutput()
 	log.Printf(string(output))
 	if err != nil {

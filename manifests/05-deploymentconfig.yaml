@@ -35,6 +35,9 @@ spec:
         - image: ''
           imagePullPolicy: Always
           name: promecieus
+          envFrom:
+            - configMapRef:
+                name: promecieus-config
           ports:
             - containerPort: 8080
               protocol: TCP

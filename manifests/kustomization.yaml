@@ -9,3 +9,17 @@ resources:
   - 07-route.yaml
   - 08-serviceaccount.yaml
   - 09-clusterrolebinding.yaml
+vars:
+  - name: SITE_HOSTNAME
+    objref:
+      kind: Route
+      name: promecieus
+      apiVersion: route.openshift.io/v1
+    fieldref:
+      fieldpath: spec.host
+generatorOptions:
+  disableNameSuffixHash: true
+configMapGenerator:
+  - name: promecieus-config
+    literal:
+      - ROUTE=$(SITE_HOSTNAME)

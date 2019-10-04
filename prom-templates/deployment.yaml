@@ -41,11 +41,8 @@ spec:
           failureThreshold: 3
         resources:
           requests:
-            cpu: 500m
-            memory: 2Gi
-          limits:
-            cpu: 500m
-            memory: 2Gi
+            cpu: 100m
+            memory: 500Mi
         volumeMounts:
         - name: prometheus-storage-volume
           mountPath: /prometheus/

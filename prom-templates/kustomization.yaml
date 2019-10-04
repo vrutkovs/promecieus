@@ -1,4 +1,4 @@
-commonLabelsAndSelectors:
+commonLabels:
   app: COMMON_LABEL
 namePrefix: COMMON_LABEL-
 resources:

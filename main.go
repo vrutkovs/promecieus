@@ -36,11 +36,11 @@ func (e *Env) create(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": err.Error(),
 		})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"message": fmt.Sprintf("foo %s %s", metricsTar, ns),
+		})
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": fmt.Sprintf("foo %s %s", metricsTar, ns),
-	})
 }
 
 func main() {

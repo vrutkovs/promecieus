@@ -14,7 +14,6 @@ import (
 	routeApi "github.com/openshift/api/route/v1"
 	routeClient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 
-	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	k8s "k8s.io/client-go/kubernetes"
@@ -176,18 +175,18 @@ func (s *ServerSettings) exposeService(appLabel string) (string, error) {
 	return fmt.Sprintf("https://%s", route.Spec.Host), nil
 }
 
-func (s *ServerSettings) waitForPodToStart(appLabel string) error {
+func (s *ServerSettings) waitForDeploymentReady(appLabel string) error {
 	return wait.PollImmediate(time.Second, 30*time.Second, func() (bool, error) {
 		listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", appLabel)}
-		pods, err := s.k8sClient.CoreV1().Pods(s.namespace).List(listOpts)
+		deps, err := s.k8sClient.AppsV1().Deployments(s.namespace).List(listOpts)
 		if err != nil {
-			return false, fmt.Errorf("Failed to list pods: %v", err)
+			return false, fmt.Errorf("Failed to list deployments: %v", err)
 		}
-		if len(pods.Items) != 1 {
-			return true, fmt.Errorf("Wrong number of pods found: %d", len(pods.Items))
+		if len(deps.Items) != 1 {
+			return true, fmt.Errorf("No running deployments found")
 		}
-		pod := pods.Items[0]
-		return pod.Status.Phase == v1.PodRunning, nil
+		dep := deps.Items[0]
+		return dep.Status.ReadyReplicas == dep.Status.Replicas, nil
 	})
 }
 

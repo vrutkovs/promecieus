@@ -128,6 +128,8 @@ class SearchForm extends React.Component {
     this.handleSearchSubmit = this.handleSearchSubmit.bind(this);
     this.handleDeleteApp = this.handleDeleteApp.bind(this);
     this.addMessage = this.addMessage.bind(this);
+    this.connect = this.connect.bind(this);
+    this.check = this.check.bind(this);
   }
 
   handleSearchInput(searchInput) {
@@ -169,7 +171,12 @@ class SearchForm extends React.Component {
     }
   }
 
-  componentDidMount() {
+  check () {
+    const { ws } = this.state;
+    if (!ws || ws.readyState == WebSocket.CLOSED) this.connect(); //check if websocket instance is closed, if so call `connect` function.
+    };
+
+  connect () {
     var loc = window.location, new_uri;
     var ws_uri;
     if (loc.protocol === "https:") {
@@ -223,6 +230,10 @@ class SearchForm extends React.Component {
       const message = JSON.parse(evt.data);
       this.addMessage(message)
     }
+  }
+
+  componentDidMount() {
+    this.connect();
   }
 
   render() {

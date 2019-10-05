@@ -48,7 +48,7 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 		log.Printf("Got ws message: %s", msg)
 		if err != nil {
 			log.Printf("Error reading message: %+v", err)
-			continue
+			break
 		}
 		if t != websocket.TextMessage {
 			log.Printf("Not a text message: %d", t)
@@ -62,10 +62,10 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 		}
 		log.Printf("WS message: %+v", m)
 		if m.Action == "new" {
-			s.createNewPrometheus(m.Message)
+			go s.createNewPrometheus(m.Message)
 		}
 		if m.Action == "delete" {
-			s.removeProm(m.Message)
+			go s.removeProm(m.Message)
 		}
 	}
 }

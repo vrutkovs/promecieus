@@ -54,39 +54,40 @@ class DeleteAppButton extends React.Component {
 
 class Message extends React.Component {
   render() {
+    var message = this.props.message.replace(/\n/g, '<br>');
     switch (this.props.action) {
       case 'status':
         return (
           <ReactBootstrap.Alert variant="info">
-          {this.props.message}
+          {message}
           </ReactBootstrap.Alert>
         )
         break;
       case 'failure':
         return (
           <ReactBootstrap.Alert variant="danger">
-          {this.props.message}
+          {message}
           </ReactBootstrap.Alert>
         )
         break;
       case 'done':
         return (
           <ReactBootstrap.Alert variant="success">
-          {this.props.message}
+          {message}
           </ReactBootstrap.Alert>
         )
         break;
       case 'link':
         return (
           <ReactBootstrap.Alert variant="warning">
-            <ReactBootstrap.Alert.Link href={this.props.message}>{this.props.message}</ReactBootstrap.Alert.Link>
+            <ReactBootstrap.Alert.Link href={message}>{this.props.message}</ReactBootstrap.Alert.Link>
           </ReactBootstrap.Alert>
         )
         break;
       case 'app-label':
         return (
           <ReactBootstrap.Alert variant="warning">
-            <DeleteAppButton onDeleteApp={this.props.onDeleteApp} appName={this.props.message}/>
+            <DeleteAppButton onDeleteApp={this.props.onDeleteApp} appName={message}/>
           </ReactBootstrap.Alert>
         )
         break;

@@ -124,7 +124,8 @@ func getRouteHost(appLabel string) (string, error) {
 }
 
 func waitForPodToStart(appLabel string) (string, error) {
-	podRolledOut := []string{"wait", "pod", "--for=condition=Ready", "-l", fmt.Sprintf("app=%s", appLabel)}
+	podRolledOut := []string{
+		"wait", "pod", "--for=condition=Ready", "--timeout=5m", "-l", fmt.Sprintf("app=%s", appLabel)}
 	output, err := exec.Command("oc", podRolledOut...).CombinedOutput()
 	if err != nil {
 		return string(output), err

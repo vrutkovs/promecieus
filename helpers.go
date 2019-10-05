@@ -155,9 +155,15 @@ func getMetricsTar(baseUrl string) (string, error) {
 	defer resp.Body.Close()
 
 	contentLength := resp.Header.Get("content-length")
+	if contentLength == "" {
+		return "", fmt.Errorf("Failed to check arhive at %s: no content length returned", expectedMetricsURL)
+	}
 	length, err := strconv.Atoi(contentLength)
-	if err != nil || contentLength == "" || length == 0 {
+	if err != nil {
 		return "", fmt.Errorf("Failed to check arhive at %s: %v", expectedMetricsURL, err)
+	}
+	if length == 0 {
+		return "", fmt.Errorf("Failed to check arhive at %s: archive is empty", expectedMetricsURL)
 	}
 	return expectedMetricsURL.String(), nil
 }

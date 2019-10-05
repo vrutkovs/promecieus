@@ -232,7 +232,7 @@ class SearchForm extends React.Component {
   render() {
     let messages;
     let searchClass;
-    if(this.state.messages != null) {
+    if(this.state.appName != '') {
         messages =
         <Status
           messages={this.state.messages}
@@ -240,7 +240,7 @@ class SearchForm extends React.Component {
         />
         searchClass = null
     } else {
-        messages = null
+        messages = []
         searchClass = 'search-center'
     }
     return (

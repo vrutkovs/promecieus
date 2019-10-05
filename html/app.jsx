@@ -40,26 +40,49 @@ class SearchBar extends React.Component {
   }
 }
 
+class PlainMessage extends React.Component {
+  render() {
+    return (
+      <div className={this.props.alertClass} role="alert">
+        {this.props.message}
+      </div>
+    )
+  }
+}
+
+class MessageWithLink extends React.Component {
+  render() {
+    return (
+      <div className={this.props.alertClass} role="alert">
+        <a href={this.props.message}>{this.props.message}</a>
+      </div>
+    )
+  }
+}
+
 class Message extends React.Component {
   render() {
+    var isLink = false;
+    var message = null;
     var alertClass = '';
     switch (this.props.action) {
       case 'status':
         alertClass = 'alert-info'
         break;
-      case 'done':
-        alertClass = 'alert-success'
-        break;
       case 'failure':
         alertClass = 'alert-danger'
         break;
+      case 'link':
+        isLink = true;
+        alertClass = 'alert-success'
+        break;
     }
     alertClass = "alert " + alertClass;
-    return (
-      <div className={alertClass} role="alert">
-        {this.props.message}
-      </div>
-    )
+    if (isLink) {
+      return <MessageWithLink alertClass={alertClass} message={this.props.message}/>
+    } else {
+      return <PlainMessage alertClass={alertClass} message={this.props.message}/>
+    }
   }
 }
 

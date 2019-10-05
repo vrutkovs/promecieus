@@ -97,5 +97,5 @@ func (s *ServerSettings) createNewPrometheus(url string) {
 		s.sendWSMessage("failure", err.Error())
 		return
 	}
-	s.sendWSMessage("done", promRoute)
+	s.sendWSMessage("link", promRoute)
 }

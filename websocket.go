@@ -77,6 +77,7 @@ func (s *ServerSettings) createNewPrometheus(url string) {
 	appLabel := generateAppLabel()
 	s.sendWSMessage("status", fmt.Sprintf("Generating app %s", appLabel))
 
+	// Adjust kustomize and apply it
 	if output, err := applyKustomize(appLabel, metricsTar); err != nil {
 		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
 		return
@@ -84,6 +85,7 @@ func (s *ServerSettings) createNewPrometheus(url string) {
 		s.sendWSMessage("status", output)
 	}
 
+	// Expose service
 	if output, err := exposeService(appLabel); err != nil {
 		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
 		return

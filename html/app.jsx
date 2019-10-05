@@ -54,7 +54,7 @@ class DeleteAppButton extends React.Component {
 
 class Message extends React.Component {
   render() {
-    var lines = this.props.message.split('\n');
+    var lines = this.props.message.trim().split('\n');
     var variants = {
       "status": "info",
       "failure": "danger",

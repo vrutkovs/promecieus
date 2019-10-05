@@ -14,7 +14,7 @@ func health(c *gin.Context) {
 }
 
 func main() {
-	c, err := inClusterLogin()
+	k8sC, routeC, err := inClusterLogin()
 	if err != nil {
 		log.Println("Failed to login in cluster")
 		log.Println(err)
@@ -27,7 +27,7 @@ func main() {
 		namespace = envVarNamespace
 	}
 
-	server := &ServerSettings{k8sClient: c, namespace: namespace}
+	server := &ServerSettings{k8sClient: k8sC, routeClient: routeC, namespace: namespace}
 	r := gin.New()
 
 	// Load templates from bin assets

@@ -25,6 +25,7 @@ import (
 type ServerSettings struct {
 	statusWebSocket *websocket.Conn
 	k8sClient       *k8s.Clientset
+	routeClient     *routeClient.RouteV1Client
 	namespace       string
 }
 
@@ -37,17 +38,29 @@ const (
 	promTarPath   = "artifacts/e2e-aws/metrics/prometheus.tar"
 )
 
-func inClusterLogin() (*k8s.Clientset, error) {
+func inClusterLogin() (*k8s.Clientset, *routeClient.RouteV1Client, error) {
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// Seed random
 	rand.Seed(time.Now().Unix())
 
 	// creates the clientset
-	return k8s.NewForConfig(config)
+	k8sClient, err := k8s.NewForConfig(config)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// create route client
+	routeClient, err := routeClient.NewForConfig(config)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return k8sClient, routeClient, err
+
 }
 
 func generateAppLabel() string {
@@ -133,15 +146,6 @@ func (s *ServerSettings) exposeService(appLabel string) (string, error) {
 	serviceName := svc.Name
 	servicePort := svc.Spec.Ports[0].TargetPort
 
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return "", fmt.Errorf("Failed to fetch incluster config: %v", err)
-	}
-	routeClient, err := routeClient.NewForConfig(config)
-	if err != nil {
-		return "", fmt.Errorf("Failed to create router client: %v", err)
-	}
-
 	promRoute := &routeApi.Route{}
 	objectMeta := metav1.ObjectMeta{}
 	objectMeta.Name = appLabel
@@ -165,7 +169,7 @@ func (s *ServerSettings) exposeService(appLabel string) (string, error) {
 	routeSpec.TLS = tlsConfig
 
 	promRoute.Spec = routeSpec
-	route, err := routeClient.Routes(s.namespace).Create(promRoute)
+	route, err := s.routeClient.Routes(s.namespace).Create(promRoute)
 	if err != nil {
 		return "", fmt.Errorf("Failed to create route: %v", err)
 	}
@@ -234,20 +238,12 @@ func (s *ServerSettings) deletePods(appLabel string) (string, error) {
 	}
 
 	// Delete route
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return "", fmt.Errorf("Failed to fetch incluster config: %v", err)
-	}
-	routeClient, err := routeClient.NewForConfig(config)
-	if err != nil {
-		return "", fmt.Errorf("Failed to create router client: %v", err)
-	}
-	routeList, err := routeClient.Routes(s.namespace).List(listOpts)
+	routeList, err := s.routeClient.Routes(s.namespace).List(listOpts)
 	if err != nil || routeList.Items == nil {
 		return "", fmt.Errorf("Failed to find routes: %v", err)
 	}
 	for _, route := range routeList.Items {
-		err := routeClient.Routes(s.namespace).Delete(route.Name, &metav1.DeleteOptions{})
+		err := s.routeClient.Routes(s.namespace).Delete(route.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return strings.Join(actionLog, "\n"),
 				fmt.Errorf("Error removing route %s: %v", route.Name, err)

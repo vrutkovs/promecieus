@@ -34,7 +34,6 @@ func (s *ServerSettings) sendWSMessage(action string, message string) {
 }
 
 func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
-	log.Println("handleJoinViaWS")
 	conn, err := wsupgrader.Upgrade(c.Writer, c.Request, nil)
 
 	if err != nil {
@@ -49,7 +48,7 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 		log.Printf("Got ws message: %s", msg)
 		if err != nil {
 			log.Printf("Error reading message: %+v", err)
-			break
+			continue
 		}
 		if t != websocket.TextMessage {
 			log.Printf("Not a text message: %d", t)
@@ -73,7 +72,7 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 
 func (s *ServerSettings) removeProm(appName string) {
 	s.sendWSMessage("status", fmt.Sprintf("Removing app %s", appName))
-	if output, err := deletePods(appName); err != nil {
+	if output, err := s.deletePods(appName); err != nil {
 		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
 		return
 	} else {
@@ -100,27 +99,19 @@ func (s *ServerSettings) createNewPrometheus(url string) {
 	}
 	// s.sendWSMessage("app-label", appLabel)
 
-	// Expose service
-	if output, err := exposeService(appLabel); err != nil {
-		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
-		return
-	} else {
-		s.sendWSMessage("status", output)
-	}
-
-	// Return route name
-	promRoute, err := getRouteHost(appLabel)
-	if err != nil {
+	// Expose service and return route host
+	if promRoute, err := s.exposeService(appLabel); err != nil {
 		s.sendWSMessage("failure", err.Error())
 		return
+	} else {
+		s.sendWSMessage("link", promRoute)
 	}
-	s.sendWSMessage("link", promRoute)
 
 	s.sendWSMessage("status", "Waiting for pods to become ready")
-	if output, err := waitForPodToStart(appLabel); err != nil {
-		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
+	if err := s.waitForDeploymentReady(appLabel); err != nil {
+		s.sendWSMessage("failure", err.Error())
 		return
 	} else {
-		s.sendWSMessage("done", output)
+		s.sendWSMessage("done", "Pod is ready")
 	}
 }

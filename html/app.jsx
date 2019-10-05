@@ -53,7 +53,7 @@ class PlainMessage extends React.Component {
 class MessageWithLink extends React.Component {
   render() {
     return (
-      <div className={this.props.alertClass} role="alert">
+      <div className="alert alert-success" role="alert">
         <a href={this.props.message}>{this.props.message}</a>
       </div>
     )
@@ -62,26 +62,23 @@ class MessageWithLink extends React.Component {
 
 class Message extends React.Component {
   render() {
-    var isLink = false;
-    var message = null;
-    var alertClass = '';
     switch (this.props.action) {
       case 'status':
-        alertClass = 'alert-info'
+        return <PlainMessage alertClass="alert alert-info" message={this.props.message}/>
         break;
       case 'failure':
-        alertClass = 'alert-danger'
+        return <PlainMessage alertClass="alert alert-danger" message={this.props.message}/>
         break;
       case 'link':
-        isLink = true;
-        alertClass = 'alert-success'
+        return <MessageWithLink message={this.props.message}/>
         break;
-    }
-    alertClass = "alert " + alertClass;
-    if (isLink) {
-      return <MessageWithLink alertClass={alertClass} message={this.props.message}/>
-    } else {
-      return <PlainMessage alertClass={alertClass} message={this.props.message}/>
+      case 'app-label':
+        return (
+          <ReactBootstrap.Button variant="warning" href={"/delete/" + this.props.message}>
+          Delete pods
+          </ReactBootstrap.Button>
+        )
+        break;
     }
   }
 }

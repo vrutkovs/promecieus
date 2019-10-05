@@ -181,10 +181,10 @@ func (s *ServerSettings) waitForPodToStart(appLabel string) error {
 		listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", appLabel)}
 		pods, err := s.k8sClient.CoreV1().Pods(s.namespace).List(listOpts)
 		if err != nil {
-			return false, fmt.Errorf("Failed to find pods: %v", err)
+			return false, fmt.Errorf("Failed to list pods: %v", err)
 		}
 		if len(pods.Items) != 1 {
-			return false, fmt.Errorf("Wrong number of pods found: %d", len(pods.Items))
+			return true, fmt.Errorf("Wrong number of pods found: %d", len(pods.Items))
 		}
 		pod := pods.Items[0]
 		return pod.Status.Phase == v1.PodRunning, nil

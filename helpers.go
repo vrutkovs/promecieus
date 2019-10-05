@@ -135,16 +135,16 @@ func waitForPodToStart(appLabel string) (string, error) {
 func deletePods(appLabel string) (string, error) {
 	deleteAll := []string{
 		"delete", "all", "-l", fmt.Sprintf("app=%s", appLabel)}
-	output, err := exec.Command("oc", deleteAll...).CombinedOutput()
+	deleteAllOutput, err := exec.Command("oc", deleteAll...).CombinedOutput()
 	if err != nil {
-		return string(output), err
+		return string(deleteAllOutput), err
 	}
 
 	deleteConfigMaps := []string{
 		"delete", "cm", "-l", fmt.Sprintf("app=%s", appLabel)}
-	output, err = exec.Command("oc", deleteConfigMaps...).CombinedOutput()
+	deleteConfigMapsOutput, err := exec.Command("oc", deleteConfigMaps...).CombinedOutput()
 	if err != nil {
-		return string(output), err
+		return string(deleteConfigMapsOutput), err
 	}
-	return string(output), nil
+	return fmt.Sprintf("%s\n%s", string(deleteAllOutput), string(deleteConfigMapsOutput)), nil
 }

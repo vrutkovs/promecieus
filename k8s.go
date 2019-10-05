@@ -15,6 +15,8 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+const deploymentRolloutTime = 5 * time.Minute
+
 func inClusterLogin() (*k8s.Clientset, *routeClient.RouteV1Client, error) {
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
@@ -83,7 +85,7 @@ func (s *ServerSettings) exposeService(appLabel string) (string, error) {
 }
 
 func (s *ServerSettings) waitForDeploymentReady(appLabel string) error {
-	return wait.PollImmediate(time.Second, 30*time.Second, func() (bool, error) {
+	return wait.PollImmediate(time.Second, deploymentRolloutTime, func() (bool, error) {
 		listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", appLabel)}
 		deps, err := s.k8sClient.AppsV1().Deployments(s.namespace).List(listOpts)
 		if err != nil {

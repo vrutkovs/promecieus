@@ -123,14 +123,13 @@ func getRouteHost(appLabel string) (string, error) {
 	return string(route), nil
 }
 
-func waitForPodToStart(appLabel string) error {
+func waitForPodToStart(appLabel string) (string, error) {
 	podRolledOut := []string{"wait", "pod", "--for=condition=Ready", "-l", fmt.Sprintf("app=%s", appLabel)}
 	output, err := exec.Command("oc", podRolledOut...).CombinedOutput()
-	log.Printf(string(output))
 	if err != nil {
-		return err
+		return string(output), err
 	}
-	return nil
+	return string(output), nil
 }
 
 func loadTemplate() (*template.Template, error) {

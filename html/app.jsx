@@ -40,43 +40,37 @@ class SearchBar extends React.Component {
   }
 }
 
-class PlainMessage extends React.Component {
-  render() {
-    return (
-      <div className={this.props.alertClass} role="alert">
-        {this.props.message}
-      </div>
-    )
-  }
-}
-
-class MessageWithLink extends React.Component {
-  render() {
-    return (
-      <div className="alert alert-success" role="alert">
-        <a href={this.props.message}>{this.props.message}</a>
-      </div>
-    )
-  }
-}
-
 class Message extends React.Component {
   render() {
     switch (this.props.action) {
       case 'status':
-        return <PlainMessage alertClass="alert alert-info" message={this.props.message}/>
+        return (
+          <ReactBootstrap.Alert variant="info">
+          {this.props.message}
+          </ReactBootstrap.Alert>
+        )
         break;
       case 'failure':
-        return <PlainMessage alertClass="alert alert-danger" message={this.props.message}/>
+        return (
+          <ReactBootstrap.Alert variant="danger">
+          {this.props.message}
+          </ReactBootstrap.Alert>
+        )
         break;
       case 'link':
-        return <MessageWithLink message={this.props.message}/>
+        return (
+          <ReactBootstrap.Alert variant="warning">
+            <ReactBootstrap.Alert.Link href={this.props.message}>{this.props.message}</ReactBootstrap.Alert.Link>
+          </ReactBootstrap.Alert>
+        )
         break;
       case 'app-label':
         return (
-          <ReactBootstrap.Button variant="warning" href={"/delete/" + this.props.message}>
-          Delete pods
-          </ReactBootstrap.Button>
+          <ReactBootstrap.Alert variant="warning">
+            <ReactBootstrap.Button variant="warning" href={"/delete/" + this.props.message}>
+            Delete pods
+            </ReactBootstrap.Button>
+          </ReactBootstrap.Alert>
         )
         break;
     }

@@ -75,6 +75,7 @@ func (s *ServerSettings) createNewPrometheus(url string) {
 
 	// Create namespace
 	appLabel := generateAppLabel()
+	s.sendWSMessage("app-label", appLabel)
 	s.sendWSMessage("status", fmt.Sprintf("Generating app %s", appLabel))
 
 	// Adjust kustomize and apply it

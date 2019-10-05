@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -10,25 +11,12 @@ func health(c *gin.Context) {
 	c.String(http.StatusOK, "")
 }
 
-// show index page
-func index(c *gin.Context) {
-	c.HTML(http.StatusOK, "html/index.html", gin.H{})
-}
-
-func jsx(c *gin.Context) {
-	c.HTML(http.StatusOK, "html/app.jsx", gin.H{})
-}
-
 func main() {
 	server := &ServerSettings{}
 	r := gin.New()
 
 	// Load templates from bin assets
-	t, err := loadTemplate()
-	if err != nil {
-		panic(err)
-	}
-	r.SetHTMLTemplate(t)
+	r.Use(static.Serve("/", static.LocalFile("./html", true)))
 
 	// Don't log k8s health endpoint
 	r.Use(
@@ -36,8 +24,6 @@ func main() {
 		gin.Recovery(),
 	)
 	r.GET("/health", health)
-	r.GET("/", index)
-	r.GET("/app.jsx", jsx)
 	r.GET("/ws/status", server.handleStatusViaWS)
 
 	r.Run(":8080")

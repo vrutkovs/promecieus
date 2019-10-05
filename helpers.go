@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
-	"html/template"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -131,23 +130,4 @@ func waitForPodToStart(appLabel string) (string, error) {
 		return string(output), err
 	}
 	return string(output), nil
-}
-
-func loadTemplate() (*template.Template, error) {
-	t := template.New("")
-	for _, name := range AssetNames() {
-		file, err := AssetInfo(name)
-		if err != nil || file.IsDir() || !strings.HasPrefix(name, "html/") {
-			continue
-		}
-		contents, err := Asset(name)
-		if err != nil {
-			return nil, err
-		}
-		t, err = t.New(name).Parse(string(contents))
-		if err != nil {
-			return nil, err
-		}
-	}
-	return t, nil
 }

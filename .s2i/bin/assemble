@@ -3,5 +3,5 @@ set -eux
 export GOPATH=`realpath $HOME/go`
 go get -v -u github.com/go-bindata/go-bindata/...
 cd /tmp/src/
-${GOPATH}/bin/go-bindata prom-templates html
+${GOPATH}/bin/go-bindata prom-templates
 exec /usr/libexec/s2i/assemble

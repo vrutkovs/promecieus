@@ -81,18 +81,15 @@ func (s *ServerSettings) removeProm(appName string) {
 }
 
 func (s *ServerSettings) createNewPrometheus(url string) {
-	s.sendWSMessage("status", "Creating new prom instance")
+	// Create namespace
+	appLabel := generateAppLabel()
+	s.sendWSMessage("app-label", appLabel)
 	metricsTar, err := getMetricsTar(url)
 	if err != nil {
 		s.sendWSMessage("failure", fmt.Sprintf("Failed to find metrics archive: %s", err.Error()))
 		return
 	}
 	s.sendWSMessage("status", fmt.Sprintf("Found archive at %s", metricsTar))
-
-	// Create namespace
-	appLabel := generateAppLabel()
-	s.sendWSMessage("app-label", appLabel)
-	s.sendWSMessage("status", fmt.Sprintf("Generating app %s", appLabel))
 
 	// Adjust kustomize and apply it
 	if output, err := applyKustomize(appLabel, metricsTar); err != nil {

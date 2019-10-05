@@ -95,6 +95,9 @@ func (s *ServerSettings) waitForDeploymentReady(appLabel string) error {
 			return true, fmt.Errorf("No running deployments found")
 		}
 		dep := deps.Items[0]
+		if dep.Status.Replicas == 0 {
+			return false, fmt.Errorf("Zero pod replicas")
+		}
 		return dep.Status.ReadyReplicas == dep.Status.Replicas, nil
 	})
 }

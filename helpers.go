@@ -33,7 +33,7 @@ const (
 	promTemplates = "prom-templates"
 	prowPrefix    = "https://prow.svc.ci.openshift.org/view/"
 	gcsPrefix     = "https://gcsweb-ci.svc.ci.openshift.org"
-	storagePrefix = "https://storage.googleapis.com/"
+	storagePrefix = "https://storage.googleapis.com"
 	promTarPath   = "metrics/prometheus.tar"
 )
 

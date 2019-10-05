@@ -73,7 +73,7 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 
 func (s *ServerSettings) removeProm(appName string) {
 	s.sendWSMessage("status", fmt.Sprintf("Removing app %s", appName))
-	if output, err := deletePods(appName); err != nil {
+	if output, err := s.deletePods(appName); err != nil {
 		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
 		return
 	} else {
@@ -92,7 +92,7 @@ func (s *ServerSettings) createNewPrometheus(url string) {
 	s.sendWSMessage("status", fmt.Sprintf("Generating app %s", appLabel))
 
 	// Adjust kustomize and apply it
-	if output, err := applyKustomize(appLabel, metricsTar); err != nil {
+	if output, err := s.applyKustomize(appLabel, metricsTar); err != nil {
 		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
 		return
 	} else {
@@ -101,7 +101,7 @@ func (s *ServerSettings) createNewPrometheus(url string) {
 	// s.sendWSMessage("app-label", appLabel)
 
 	// Expose service
-	if output, err := exposeService(appLabel); err != nil {
+	if output, err := s.exposeService(appLabel); err != nil {
 		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
 		return
 	} else {
@@ -109,7 +109,7 @@ func (s *ServerSettings) createNewPrometheus(url string) {
 	}
 
 	// Return route name
-	promRoute, err := getRouteHost(appLabel)
+	promRoute, err := s.getRouteHost(appLabel)
 	if err != nil {
 		s.sendWSMessage("failure", err.Error())
 		return
@@ -117,7 +117,7 @@ func (s *ServerSettings) createNewPrometheus(url string) {
 	s.sendWSMessage("link", promRoute)
 
 	s.sendWSMessage("status", "Waiting for pods to become ready")
-	if output, err := waitForPodToStart(appLabel); err != nil {
+	if output, err := s.waitForPodToStart(appLabel); err != nil {
 		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
 		return
 	} else {

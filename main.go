@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 )
 
@@ -12,7 +13,14 @@ func health(c *gin.Context) {
 }
 
 func main() {
-	server := &ServerSettings{}
+	c, err := inClusterLogin()
+	if err != nil {
+		log.Println("Failed to login in cluster")
+		log.Println(err)
+		return
+	}
+
+	server := &ServerSettings{k8sClient: c}
 	r := gin.New()
 
 	// Load templates from bin assets

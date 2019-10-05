@@ -10,11 +10,15 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 // ServerSettings stores info about the server
 type ServerSettings struct {
 	statusWebSocket *websocket.Conn
+	k8sClient       *k8s.Clientset
 }
 
 const (
@@ -25,6 +29,19 @@ const (
 	gcsPrefix     = "https://gcsweb-ci.svc.ci.openshift.org/"
 	promTarPath   = "artifacts/e2e-aws/metrics/prometheus.tar"
 )
+
+func inClusterLogin() (*k8s.Clientset, error) {
+	// creates the in-cluster config
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	// Seed random
+	rand.Seed(time.Now().Unix())
+
+	// creates the clientset
+	return k8s.NewForConfig(config)
+}
 
 func generateAppLabel() string {
 	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -63,7 +80,7 @@ func updateKustomization(tmpDir string, metricsTar string, appLabel string) erro
 	return nil
 }
 
-func applyKustomize(appLabel string, metricsTar string) (string, error) {
+func (s *ServerSettings) applyKustomize(appLabel string, metricsTar string) (string, error) {
 	// Make temp dir for assets
 	tmpDir, err := ioutil.TempDir("", appLabel)
 	defer os.RemoveAll(tmpDir)
@@ -97,7 +114,7 @@ func applyKustomize(appLabel string, metricsTar string) (string, error) {
 	return string(output), nil
 }
 
-func exposeService(appLabel string) (string, error) {
+func (s *ServerSettings) exposeService(appLabel string) (string, error) {
 	svcCmd := []string{"get", "-o", "name", "service", "-l", fmt.Sprintf("app=%s", appLabel)}
 	service, err := exec.Command("oc", svcCmd...).Output()
 	if err != nil {
@@ -113,7 +130,7 @@ func exposeService(appLabel string) (string, error) {
 	return string(output), nil
 }
 
-func getRouteHost(appLabel string) (string, error) {
+func (s *ServerSettings) getRouteHost(appLabel string) (string, error) {
 	routeCmd := []string{"get", "route", appLabel, "-o", "jsonpath=http://{.spec.host}"}
 	route, err := exec.Command("oc", routeCmd...).Output()
 	if err != nil {
@@ -122,7 +139,7 @@ func getRouteHost(appLabel string) (string, error) {
 	return string(route), nil
 }
 
-func waitForPodToStart(appLabel string) (string, error) {
+func (s *ServerSettings) waitForPodToStart(appLabel string) (string, error) {
 	podRolledOut := []string{
 		"wait", "pod", "--for=condition=Ready", "--timeout=5m", "-l", fmt.Sprintf("app=%s", appLabel)}
 	output, err := exec.Command("oc", podRolledOut...).CombinedOutput()
@@ -132,7 +149,7 @@ func waitForPodToStart(appLabel string) (string, error) {
 	return string(output), nil
 }
 
-func deletePods(appLabel string) (string, error) {
+func (s *ServerSettings) deletePods(appLabel string) (string, error) {
 	deleteAll := []string{
 		"delete", "all", "-l", fmt.Sprintf("app=%s", appLabel)}
 	deleteAllOutput, err := exec.Command("oc", deleteAll...).CombinedOutput()

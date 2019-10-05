@@ -19,6 +19,8 @@ spec:
     dockerfile: |-
       FROM base
       COPY gobinary /usr/local/bin/promecieus
+      COPY html/ /srv/
+      WORKDIR /srv/
       EXPOSE 8080
       ENTRYPOINT ["/usr/local/bin/promecieus"]
     images:
@@ -29,6 +31,8 @@ spec:
       paths:
       - destinationDir: .
         sourcePath: /opt/app-root/gobinary
+      - sourcePath: /tmp/src/html
+        destinationDir: ./html
     type: Dockerfile
   strategy:
     dockerStrategy:

@@ -48,7 +48,7 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 		log.Printf("Got ws message: %s", msg)
 		if err != nil {
 			log.Printf("Error reading message: %+v", err)
-			break
+			continue
 		}
 		if t != websocket.TextMessage {
 			log.Printf("Not a text message: %d", t)

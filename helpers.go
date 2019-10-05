@@ -177,7 +177,7 @@ func (s *ServerSettings) exposeService(appLabel string) (string, error) {
 }
 
 func (s *ServerSettings) waitForPodToStart(appLabel string) error {
-	return wait.PollImmediate(time.Second*30, time.Second*5, func() (bool, error) {
+	return wait.PollImmediate(30*time.Second, time.Second, func() (bool, error) {
 		listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", appLabel)}
 		pods, err := s.k8sClient.CoreV1().Pods(s.namespace).List(listOpts)
 		if err != nil {

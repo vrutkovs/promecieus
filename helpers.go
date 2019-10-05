@@ -159,9 +159,9 @@ func (s *ServerSettings) exposeService(appLabel string) (string, error) {
 	routeTarget.Name = serviceName
 	routeSpec.To = routeTarget
 
-	routePort := routeApi.RoutePort{}
+	routePort := &routeApi.RoutePort{}
 	routePort.TargetPort = servicePort
-	routeSpec.Port = routeSpec.Port
+	routeSpec.Port = routePort
 
 	tlsConfig := &routeApi.TLSConfig{}
 	tlsConfig.Termination = routeApi.TLSTerminationEdge

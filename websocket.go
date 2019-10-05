@@ -34,7 +34,6 @@ func (s *ServerSettings) sendWSMessage(action string, message string) {
 }
 
 func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
-	log.Println("handleJoinViaWS")
 	conn, err := wsupgrader.Upgrade(c.Writer, c.Request, nil)
 
 	if err != nil {

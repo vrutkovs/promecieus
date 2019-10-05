@@ -143,6 +143,7 @@ class SearchForm extends React.Component {
     }
 
     try {
+      this.state.messages = []
       this.state.ws.send(JSON.stringify({
         'action': 'new',
         'message': this.state.searchInput
@@ -159,6 +160,9 @@ class SearchForm extends React.Component {
         'action': 'delete',
         'message': this.state.appName
       }))
+      // Remove message with app-label from the list
+      let newMessages = this.state.messages.slice(1, this.state.messages.length)
+      this.setState(state => ({ messages: newMessages }))
     } catch (error) {
       console.log(error)
     }

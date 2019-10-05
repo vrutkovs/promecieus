@@ -169,7 +169,7 @@ func (s *ServerSettings) exposeService(appLabel string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Failed to create route: %v", err)
 	}
-	return route.Spec.Host, nil
+	return fmt.Sprintf("https://%s", route.Spec.Host), nil
 }
 
 func (s *ServerSettings) waitForPodToStart(appLabel string) error {

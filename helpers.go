@@ -123,6 +123,16 @@ func getRouteHost(appLabel string) (string, error) {
 	return string(route), nil
 }
 
+func waitForPodToStart(appLabel string) error {
+	podRolledOut := []string{"wait", "pod", "--for=condition=Ready", "-l", fmt.Sprintf("app=%s", appLabel)}
+	output, err := exec.Command("oc", podRolledOut...).CombinedOutput()
+	log.Printf(string(output))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func loadTemplate() (*template.Template, error) {
 	t := template.New("")
 	for _, name := range AssetNames() {

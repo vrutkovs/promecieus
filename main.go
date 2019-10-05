@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
+	"os"
 )
 
 // health is k8s endpoint for liveness check
@@ -20,7 +21,13 @@ func main() {
 		return
 	}
 
-	server := &ServerSettings{k8sClient: c}
+	namespace := "promecieus"
+	envVarNamespace := os.Getenv("NAMESPACE")
+	if len(envVarNamespace) != 0 {
+		namespace = envVarNamespace
+	}
+
+	server := &ServerSettings{k8sClient: c, namespace: namespace}
 	r := gin.New()
 
 	// Load templates from bin assets

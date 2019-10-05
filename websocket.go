@@ -92,7 +92,7 @@ func (s *ServerSettings) createNewPrometheus(url string) {
 	s.sendWSMessage("status", fmt.Sprintf("Generating app %s", appLabel))
 
 	// Adjust kustomize and apply it
-	if output, err := s.applyKustomize(appLabel, metricsTar); err != nil {
+	if output, err := applyKustomize(appLabel, metricsTar); err != nil {
 		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
 		return
 	} else {
@@ -100,21 +100,13 @@ func (s *ServerSettings) createNewPrometheus(url string) {
 	}
 	// s.sendWSMessage("app-label", appLabel)
 
-	// Expose service
-	if output, err := s.exposeService(appLabel); err != nil {
-		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
-		return
-	} else {
-		s.sendWSMessage("status", output)
-	}
-
-	// Return route name
-	promRoute, err := s.getRouteHost(appLabel)
-	if err != nil {
+	// Expose service and return route host
+	if promRoute, err := s.exposeService(appLabel); err != nil {
 		s.sendWSMessage("failure", err.Error())
 		return
+	} else {
+		s.sendWSMessage("link", promRoute)
 	}
-	s.sendWSMessage("link", promRoute)
 
 	s.sendWSMessage("status", "Waiting for pods to become ready")
 	if output, err := s.waitForPodToStart(appLabel); err != nil {

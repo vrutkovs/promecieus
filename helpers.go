@@ -11,6 +11,10 @@ import (
 	"strings"
 	"time"
 
+	routeApi "github.com/openshift/api/route/v1"
+	routeClient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -19,6 +23,7 @@ import (
 type ServerSettings struct {
 	statusWebSocket *websocket.Conn
 	k8sClient       *k8s.Clientset
+	namespace       string
 }
 
 const (
@@ -80,7 +85,7 @@ func updateKustomization(tmpDir string, metricsTar string, appLabel string) erro
 	return nil
 }
 
-func (s *ServerSettings) applyKustomize(appLabel string, metricsTar string) (string, error) {
+func applyKustomize(appLabel string, metricsTar string) (string, error) {
 	// Make temp dir for assets
 	tmpDir, err := ioutil.TempDir("", appLabel)
 	defer os.RemoveAll(tmpDir)
@@ -115,28 +120,54 @@ func (s *ServerSettings) applyKustomize(appLabel string, metricsTar string) (str
 }
 
 func (s *ServerSettings) exposeService(appLabel string) (string, error) {
-	svcCmd := []string{"get", "-o", "name", "service", "-l", fmt.Sprintf("app=%s", appLabel)}
-	service, err := exec.Command("oc", svcCmd...).Output()
-	if err != nil {
-		return "", err
+	// Find created
+	svcList, err := s.k8sClient.CoreV1().Services(s.namespace).List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("app=%s", appLabel),
+	})
+	if err != nil || svcList.Items == nil || len(svcList.Items) == 0 {
+		return "", fmt.Errorf("Failed to list services: %v", err)
 	}
-	serviceName := strings.Split(string(service), "\n")[0]
+	svc := svcList.Items[0]
+	serviceName := svc.Name
+	servicePort := svc.Spec.Ports[0].TargetPort
 
-	exposeSvc := []string{"expose", serviceName, "-l", fmt.Sprintf("app=%s", appLabel), "--name", appLabel}
-	output, err := exec.Command("oc", exposeSvc...).CombinedOutput()
+	config, err := rest.InClusterConfig()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Failed to fetch incluster config: %v", err)
 	}
-	return string(output), nil
-}
+	routeClient, err := routeClient.NewForConfig(config)
+	if err != nil {
+		return "", fmt.Errorf("Failed to create router client: %v", err)
+	}
 
-func (s *ServerSettings) getRouteHost(appLabel string) (string, error) {
-	routeCmd := []string{"get", "route", appLabel, "-o", "jsonpath=http://{.spec.host}"}
-	route, err := exec.Command("oc", routeCmd...).Output()
+	promRoute := &routeApi.Route{}
+	objectMeta := metav1.ObjectMeta{}
+	objectMeta.Name = appLabel
+	objectMeta.Namespace = s.namespace
+	promRoute.ObjectMeta = objectMeta
+
+	routeSpec := routeApi.RouteSpec{}
+
+	routeTarget := routeApi.RouteTargetReference{}
+	routeTarget.Kind = "Service"
+	routeTarget.Name = serviceName
+	routeSpec.To = routeTarget
+
+	routePort := routeApi.RoutePort{}
+	routePort.TargetPort = servicePort
+	routeSpec.Port = routeSpec.Port
+
+	tlsConfig := &routeApi.TLSConfig{}
+	tlsConfig.Termination = routeApi.TLSTerminationEdge
+	tlsConfig.InsecureEdgeTerminationPolicy = routeApi.InsecureEdgeTerminationPolicyRedirect
+	routeSpec.TLS = tlsConfig
+
+	promRoute.Spec = routeSpec
+	route, err := routeClient.Routes(s.namespace).Create(promRoute)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Failed to create route: %v", err)
 	}
-	return string(route), nil
+	return route.Spec.Host, nil
 }
 
 func (s *ServerSettings) waitForPodToStart(appLabel string) (string, error) {

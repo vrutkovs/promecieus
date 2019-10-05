@@ -118,7 +118,7 @@ func getMetricsTar(baseUrl string) (string, error) {
 	// Replace prow with gcs to get artifacts link
 	gcsUrl, err := url.Parse(gcsTempUrl)
 	if err != nil {
-		return "", fmt.Errorf("Failed to parse GCS URL:", gcsTempUrl, err)
+		return "", fmt.Errorf("Failed to parse GCS URL %s: %v", gcsTempUrl, err)
 	}
 	// Check that 'artifacts' folder is present
 	gcsToplinks, err := getGCSLinks(gcsUrl.String())

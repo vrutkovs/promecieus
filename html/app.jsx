@@ -18,22 +18,24 @@ class SearchBar extends React.Component {
     return (
       <ReactBootstrap.Form horizontal>
         <ReactBootstrap.FormGroup>
-          <ReactBootstrap.Col sm={11}>
-            <ReactBootstrap.FormControl
-              autoFocus="true"
-              type="text"
-              placeholder="Feed me Prow URLs..."
-              value={this.props.searchInput}
-              onChange={this.handleInputChange}
-            />
-          </ReactBootstrap.Col>
-          <ReactBootstrap.Col sm={1}>
-            <ReactBootstrap.Button
-              type="submit"
-              onClick={this.handleSubmit}>
-              Generate
-            </ReactBootstrap.Button>
-          </ReactBootstrap.Col>
+          <ReactBootstrap.Row>
+            <ReactBootstrap.Col xs={11}>
+              <ReactBootstrap.FormControl
+                autoFocus="true"
+                type="text"
+                placeholder="Feed me Prow URLs..."
+                value={this.props.searchInput}
+                onChange={this.handleInputChange}
+              />
+            </ReactBootstrap.Col>
+            <ReactBootstrap.Col xs={1}>
+              <ReactBootstrap.Button
+                type="submit"
+                onClick={this.handleSubmit}>
+                Generate
+              </ReactBootstrap.Button>
+            </ReactBootstrap.Col>
+          </ReactBootstrap.Row>
         </ReactBootstrap.FormGroup>
       </ReactBootstrap.Form>
     );

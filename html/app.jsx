@@ -42,6 +42,16 @@ class SearchBar extends React.Component {
   }
 }
 
+class DeleteAppButton extends React.Component {
+  render() {
+    return (
+      <ReactBootstrap.Button variant="warning" onClick={this.props.onDeleteApp}>
+      Delete {this.props.appName} instance
+      </ReactBootstrap.Button>
+    )
+  }
+}
+
 class Message extends React.Component {
   render() {
     switch (this.props.action) {
@@ -59,6 +69,13 @@ class Message extends React.Component {
           </ReactBootstrap.Alert>
         )
         break;
+      case 'done':
+        return (
+          <ReactBootstrap.Alert variant="success">
+          {this.props.message}
+          </ReactBootstrap.Alert>
+        )
+        break;
       case 'link':
         return (
           <ReactBootstrap.Alert variant="warning">
@@ -69,9 +86,7 @@ class Message extends React.Component {
       case 'app-label':
         return (
           <ReactBootstrap.Alert variant="warning">
-            <ReactBootstrap.Button variant="warning" href={"/delete/" + this.props.message}>
-            Delete pods
-            </ReactBootstrap.Button>
+            <DeleteAppButton onDeleteApp={this.props.onDeleteApp} appName={this.props.message}/>
           </ReactBootstrap.Alert>
         )
         break;
@@ -90,7 +105,11 @@ class Status extends React.Component {
         <div>
           {
             this.props.messages.map(item =>
-              <Message action={item.action} message={item.message} />
+              <Message
+                action={item.action}
+                message={item.message}
+                onDeleteApp={this.props.onDeleteApp}
+              />
             )
           }
         </div>
@@ -105,11 +124,13 @@ class SearchForm extends React.Component {
     this.state = {
       searchInput: '',
       messages: [],
+      appName: '',
       ws: null
     };
 
     this.handleSearchInput = this.handleSearchInput.bind(this);
     this.handleSearchSubmit = this.handleSearchSubmit.bind(this);
+    this.handleDeleteApp = this.handleDeleteApp.bind(this);
     this.addMessage = this.addMessage.bind(this);
   }
 
@@ -133,8 +154,23 @@ class SearchForm extends React.Component {
     }
   }
 
+  handleDeleteApp(event) {
+    console.log("handleDeleteApp " )
+    try {
+      this.state.ws.send(JSON.stringify({
+        'action': 'delete',
+        'message': this.state.appName
+      }))
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
   addMessage(message) {
     this.setState(state => ({ messages: [...state.messages, message] }))
+    if (message.action === "app-label") {
+      this.setState(state => ({appName: message.message}))
+    }
   }
 
   componentDidMount() {
@@ -197,7 +233,11 @@ class SearchForm extends React.Component {
     let messages;
     let searchClass;
     if(this.state.messages != null) {
-        messages = <Status messages={this.state.messages} />
+        messages =
+        <Status
+          messages={this.state.messages}
+          onDeleteApp={this.handleDeleteApp}
+        />
         searchClass = null
     } else {
         messages = null

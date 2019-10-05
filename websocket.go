@@ -65,6 +65,19 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 		if m.Action == "new" {
 			s.createNewPrometheus(m.Message)
 		}
+		if m.Action == "delete" {
+			s.removeProm(m.Message)
+		}
+	}
+}
+
+func (s *ServerSettings) removeProm(appName string) {
+	s.sendWSMessage("status", fmt.Sprintf("Removing app %s", appName))
+	if output, err := deletePods(appName); err != nil {
+		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
+		return
+	} else {
+		s.sendWSMessage("done", output)
 	}
 }
 
@@ -85,6 +98,7 @@ func (s *ServerSettings) createNewPrometheus(url string) {
 	} else {
 		s.sendWSMessage("status", output)
 	}
+	// s.sendWSMessage("app-label", appLabel)
 
 	// Expose service
 	if output, err := exposeService(appLabel); err != nil {
@@ -107,6 +121,6 @@ func (s *ServerSettings) createNewPrometheus(url string) {
 		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
 		return
 	} else {
-		s.sendWSMessage("status", output)
+		s.sendWSMessage("done", output)
 	}
 }

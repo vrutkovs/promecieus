@@ -188,18 +188,72 @@ func (s *ServerSettings) waitForPodToStart(appLabel string) error {
 }
 
 func (s *ServerSettings) deletePods(appLabel string) (string, error) {
-	deleteAll := []string{
-		"delete", "all", "-l", fmt.Sprintf("app=%s", appLabel)}
-	deleteAllOutput, err := exec.Command("oc", deleteAll...).CombinedOutput()
-	if err != nil {
-		return string(deleteAllOutput), err
+	actionLog := []string{}
+
+	// Delete service
+	listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", appLabel)}
+	svcList, err := s.k8sClient.CoreV1().Services(s.namespace).List(listOpts)
+	if err != nil || svcList.Items == nil {
+		return "", fmt.Errorf("Failed to find services: %v", err)
+	}
+	for _, svc := range svcList.Items {
+		err := s.k8sClient.CoreV1().Services(s.namespace).Delete(svc.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			return strings.Join(actionLog, "\n"),
+				fmt.Errorf("Error removing service %s: %v", svc.Name, err)
+		}
+		actionLog = append(actionLog, fmt.Sprintf("Removed service %s", svc.Name))
 	}
 
-	deleteConfigMaps := []string{
-		"delete", "cm", "-l", fmt.Sprintf("app=%s", appLabel)}
-	deleteConfigMapsOutput, err := exec.Command("oc", deleteConfigMaps...).CombinedOutput()
-	if err != nil {
-		return string(deleteConfigMapsOutput), err
+	// Delete deployment
+	depList, err := s.k8sClient.AppsV1().Deployments(s.namespace).List(listOpts)
+	if err != nil || depList.Items == nil {
+		return "", fmt.Errorf("Failed to find deployments: %v", err)
 	}
-	return fmt.Sprintf("%s\n%s", string(deleteAllOutput), string(deleteConfigMapsOutput)), nil
+	for _, dep := range depList.Items {
+		err := s.k8sClient.AppsV1().Deployments(s.namespace).Delete(dep.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			return strings.Join(actionLog, "\n"),
+				fmt.Errorf("Error removing deployment %s: %v", dep.Name, err)
+		}
+		actionLog = append(actionLog, fmt.Sprintf("Removed deployment %s", dep.Name))
+	}
+
+	// Delete configmap
+	cmList, err := s.k8sClient.CoreV1().ConfigMaps(s.namespace).List(listOpts)
+	if err != nil || cmList.Items == nil {
+		return "", fmt.Errorf("Failed to find config maps: %v", err)
+	}
+	for _, cm := range cmList.Items {
+		err := s.k8sClient.CoreV1().ConfigMaps(s.namespace).Delete(cm.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			return strings.Join(actionLog, "\n"),
+				fmt.Errorf("Error removing config map %s: %v", cm.Name, err)
+		}
+		actionLog = append(actionLog, fmt.Sprintf("Removed config map %s", cm.Name))
+	}
+
+	// Delete route
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return "", fmt.Errorf("Failed to fetch incluster config: %v", err)
+	}
+	routeClient, err := routeClient.NewForConfig(config)
+	if err != nil {
+		return "", fmt.Errorf("Failed to create router client: %v", err)
+	}
+	routeList, err := routeClient.Routes(s.namespace).List(listOpts)
+	if err != nil || routeList.Items == nil {
+		return "", fmt.Errorf("Failed to find routes: %v", err)
+	}
+	for _, route := range routeList.Items {
+		err := routeClient.Routes(s.namespace).Delete(route.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			return strings.Join(actionLog, "\n"),
+				fmt.Errorf("Error removing route %s: %v", route.Name, err)
+		}
+		actionLog = append(actionLog, fmt.Sprintf("Removed route %s", route.Name))
+	}
+
+	return strings.Join(actionLog, "\n"), nil
 }

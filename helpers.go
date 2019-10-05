@@ -14,7 +14,9 @@ import (
 	routeApi "github.com/openshift/api/route/v1"
 	routeClient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -170,14 +172,19 @@ func (s *ServerSettings) exposeService(appLabel string) (string, error) {
 	return route.Spec.Host, nil
 }
 
-func (s *ServerSettings) waitForPodToStart(appLabel string) (string, error) {
-	podRolledOut := []string{
-		"wait", "pod", "--for=condition=Ready", "--timeout=5m", "-l", fmt.Sprintf("app=%s", appLabel)}
-	output, err := exec.Command("oc", podRolledOut...).CombinedOutput()
-	if err != nil {
-		return string(output), err
-	}
-	return string(output), nil
+func (s *ServerSettings) waitForPodToStart(appLabel string) error {
+	return wait.PollImmediate(time.Second*30, time.Second*5, func() (bool, error) {
+		listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", appLabel)}
+		pods, err := s.k8sClient.CoreV1().Pods(s.namespace).List(listOpts)
+		if err != nil {
+			return false, fmt.Errorf("Failed to find pods: %v", err)
+		}
+		if len(pods.Items) != 1 {
+			return false, fmt.Errorf("Wrong number of pods found: %d", len(pods.Items))
+		}
+		pod := pods.Items[0]
+		return pod.Status.Phase == v1.PodRunning, nil
+	})
 }
 
 func (s *ServerSettings) deletePods(appLabel string) (string, error) {

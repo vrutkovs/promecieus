@@ -109,10 +109,10 @@ func (s *ServerSettings) createNewPrometheus(url string) {
 	}
 
 	s.sendWSMessage("status", "Waiting for pods to become ready")
-	if output, err := s.waitForPodToStart(appLabel); err != nil {
-		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
+	if err := s.waitForPodToStart(appLabel); err != nil {
+		s.sendWSMessage("failure", err.Error())
 		return
 	} else {
-		s.sendWSMessage("done", output)
+		s.sendWSMessage("done", "Pod is ready")
 	}
 }

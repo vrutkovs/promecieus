@@ -183,7 +183,9 @@ func getTarURLFromProw(conn *websocket.Conn, baseUrl string) (string, error) {
 	sendWSMessage(conn, "status", fmt.Sprintf("e2e URL: %s", e2eUrl.String()))
 
 	gcsMetricsURL := fmt.Sprintf("%s%s", e2eUrl.String(), promTarPath)
+	sendWSMessage(conn, "status", fmt.Sprintf("gcsMetricsURL URL: %s", gcsMetricsURL))
 	tempMetricsURL := strings.Replace(gcsMetricsURL, gcsPrefix+"/gcs", storagePrefix, -1)
+	sendWSMessage(conn, "status", fmt.Sprintf("tempMetricsURL URL: %s", tempMetricsURL))
 	expectedMetricsURL, err := url.Parse(tempMetricsURL)
 	if err != nil {
 		return "", fmt.Errorf("Failed to parse metrics link %s: %v", tempMetricsURL, err)

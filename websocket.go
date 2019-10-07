@@ -74,7 +74,7 @@ func (s *ServerSettings) removeProm(conn *websocket.Conn, appName string) {
 		sendWSMessage(conn, "failure", fmt.Sprintf("%s\n%s", output, err.Error()))
 		return
 	} else {
-		sendWSMessage(conn, "done", output)
+		sendWSMessage(conn, "done", "Prometheus instance removed")
 	}
 }
 

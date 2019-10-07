@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -15,7 +16,10 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-const deploymentRolloutTime = 5 * time.Minute
+const (
+	deploymentRolloutTime = 5 * time.Minute
+	deploymentLifetime    = 8 * time.Hour
+)
 
 func inClusterLogin() (*k8s.Clientset, *routeClient.RouteV1Client, error) {
 	// creates the in-cluster config
@@ -166,4 +170,31 @@ func (s *ServerSettings) deletePods(appLabel string) (string, error) {
 	}
 
 	return strings.Join(actionLog, "\n"), nil
+}
+
+func (s *ServerSettings) cleanupOldDeployements() {
+	log.Println("Cleaning up old deployments")
+	// List all deployments, find those which are older than n hours and call 'deletePods'
+	depsList, err := s.k8sClient.AppsV1().Deployments(s.namespace).List(metav1.ListOptions{})
+	if err != nil || depsList.Items == nil {
+		return
+	}
+	now := time.Now()
+	for _, dep := range depsList.Items {
+		log.Printf("Found %s", dep.Name)
+		// Get dep label and create time
+		appLabel, ok := dep.Labels["app"]
+		if !ok {
+			log.Println("Deployment has no appLabel, skipping")
+			// Deployment has no app label
+			continue
+		}
+		createdAt := dep.GetCreationTimestamp()
+		if now.After(createdAt.Add(deploymentLifetime)) {
+			log.Println("Deployment will be garbage collected")
+			go s.deletePods(appLabel)
+		} else {
+			log.Println("Deployment will see another sunrise")
+		}
+	}
 }

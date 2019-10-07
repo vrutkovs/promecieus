@@ -12,6 +12,7 @@ require (
 	github.com/googleapis/gnostic v0.3.1 // indirect
 	github.com/gorilla/websocket v1.4.1
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
+	github.com/jasonlvhit/gocron v0.0.0-20191007095851-6d7839df1569
 	github.com/openshift/api v3.9.0+incompatible
 	github.com/openshift/client-go v0.0.0-20190412095722-0255926f5393
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect

@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
+	"github.com/jasonlvhit/gocron"
 	"log"
 	"net/http"
 	"os"
@@ -40,6 +41,11 @@ func main() {
 	)
 	r.GET("/health", health)
 	r.GET("/ws/status", server.handleStatusViaWS)
+
+	go func() {
+		gocron.Every(2).Minutes().Do(server.cleanupOldDeployements)
+		<-gocron.Start()
+	}()
 
 	r.Run(":8080")
 }

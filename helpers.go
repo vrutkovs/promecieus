@@ -46,7 +46,7 @@ func generateAppLabel() string {
 	return string(b)
 }
 
-func getGCSLinks(url string) ([]string, error) {
+func getLinksFromUrl(url string) ([]string, error) {
 	links := []string{}
 
 	var netClient = &http.Client{
@@ -124,7 +124,7 @@ func getTarURLFromProw(baseUrl string) (string, error) {
 		return "", fmt.Errorf("Failed to parse GCS URL %s: %v", gcsTempUrl, err)
 	}
 	// Check that 'artifacts' folder is present
-	gcsToplinks, err := getGCSLinks(gcsUrl.String())
+	gcsToplinks, err := getLinksFromUrl(gcsUrl.String())
 	if err != nil {
 		return "", fmt.Errorf("Failed to fetch top-level GCS link at %s: %v", gcsUrl, err)
 	}
@@ -148,7 +148,7 @@ func getTarURLFromProw(baseUrl string) (string, error) {
 	log.Printf("artifactsUrl: %s", artifactsUrl.String())
 
 	// Get a list of folders in find ones which contain e2e
-	artifactLinksToplinks, err := getGCSLinks(artifactsUrl.String())
+	artifactLinksToplinks, err := getLinksFromUrl(artifactsUrl.String())
 	if err != nil {
 		return "", fmt.Errorf("Failed to fetch artifacts link at %s: %v", gcsUrl, err)
 	}

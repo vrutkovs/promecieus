@@ -89,7 +89,8 @@ func getMetricsTar(conn *websocket.Conn, url string) (string, error) {
 		sendWSMessage(conn, "status", "Found direct prometheus URL")
 		expectedMetricsURL = url
 	} else {
-		if expectedMetricsURL, err := getTarURLFromProw(conn, url); err != nil {
+		expectedMetricsURL, err := getTarURLFromProw(conn, url)
+		if err != nil {
 			return expectedMetricsURL, err
 		}
 		sendWSMessage(conn, "status", fmt.Sprintf("Found prometheus archive at %s", expectedMetricsURL))

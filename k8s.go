@@ -58,6 +58,9 @@ func (s *ServerSettings) exposeService(appLabel string) (string, error) {
 	objectMeta := metav1.ObjectMeta{}
 	objectMeta.Name = appLabel
 	objectMeta.Namespace = s.namespace
+	routeLabels := make(map[string]string)
+	routeLabels["app"] = appLabel
+	objectMeta.Labels = routeLabels
 	promRoute.ObjectMeta = objectMeta
 
 	routeSpec := routeApi.RouteSpec{}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/gorilla/websocket"
 	"golang.org/x/net/html"
 	"io/ioutil"
 	"log"
@@ -82,17 +83,20 @@ func getLinksFromUrl(url string) ([]string, error) {
 	}
 }
 
-func getMetricsTar(url string) (string, error) {
+func getMetricsTar(conn *websocket.Conn, url string) (string, error) {
 	expectedMetricsURL := ""
 	if strings.HasSuffix("/prometheus.tar", url) {
+		sendWSMessage(conn, "status", "Found direct prometheus URL")
 		expectedMetricsURL = url
 	} else {
-		if expectedMetricsURL, err := getTarURLFromProw(url); err != nil {
+		if expectedMetricsURL, err := getTarURLFromProw(conn, url); err != nil {
 			return expectedMetricsURL, err
 		}
+		sendWSMessage(conn, "status", fmt.Sprintf("Found prometheus archive at %s", expectedMetricsURL))
 	}
 
 	// Check that metrics/prometheus.tar can be fetched and it non-null
+	sendWSMessage(conn, "status", "Checking if prometheus archive can be fetched")
 	var netClient = &http.Client{
 		Timeout: time.Second * 10,
 	}
@@ -116,13 +120,14 @@ func getMetricsTar(url string) (string, error) {
 	return expectedMetricsURL, nil
 }
 
-func getTarURLFromProw(baseUrl string) (string, error) {
+func getTarURLFromProw(conn *websocket.Conn, baseUrl string) (string, error) {
 	gcsTempUrl := strings.Replace(baseUrl, prowPrefix, gcsPrefix, -1)
 	// Replace prow with gcs to get artifacts link
 	gcsUrl, err := url.Parse(gcsTempUrl)
 	if err != nil {
 		return "", fmt.Errorf("Failed to parse GCS URL %s: %v", gcsTempUrl, err)
 	}
+	sendWSMessage(conn, "status", fmt.Sprintf("GCS URL: %s", gcsUrl.String()))
 	// Check that 'artifacts' folder is present
 	gcsToplinks, err := getLinksFromUrl(gcsUrl.String())
 	if err != nil {
@@ -145,7 +150,7 @@ func getTarURLFromProw(baseUrl string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Failed to parse artifacts link %s: %v", tmpArtifactsUrl, err)
 	}
-	log.Printf("artifactsUrl: %s", artifactsUrl.String())
+	sendWSMessage(conn, "status", fmt.Sprintf("Artifacts URL: %s", artifactsUrl.String()))
 
 	// Get a list of folders in find ones which contain e2e
 	artifactLinksToplinks, err := getLinksFromUrl(artifactsUrl.String())
@@ -175,7 +180,7 @@ func getTarURLFromProw(baseUrl string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Failed to parse e2e link %s: %v", tmpE2eUrl, err)
 	}
-	log.Printf("e2eUrl: %s", e2eUrl.String())
+	sendWSMessage(conn, "status", fmt.Sprintf("e2e URL: %s", e2eUrl.String()))
 
 	gcsMetricsURL := fmt.Sprintf("%s%s", e2eUrl.String(), promTarPath)
 	tempMetricsURL := strings.Replace(gcsMetricsURL, gcsPrefix+"/gcs", storagePrefix, -1)
@@ -183,7 +188,6 @@ func getTarURLFromProw(baseUrl string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Failed to parse metrics link %s: %v", tempMetricsURL, err)
 	}
-	log.Printf("expectedMetricsURL: %s", expectedMetricsURL.String())
 	return expectedMetricsURL.String(), nil
 }
 

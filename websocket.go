@@ -82,7 +82,7 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, url string) {
 	// Create namespace
 	appLabel := generateAppLabel()
 	sendWSMessage(conn, "app-label", appLabel)
-	metricsTar, err := getMetricsTar(url)
+	metricsTar, err := getMetricsTar(conn, url)
 	if err != nil {
 		sendWSMessage(conn, "failure", fmt.Sprintf("Failed to find metrics archive: %s", err.Error()))
 		return

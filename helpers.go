@@ -85,16 +85,16 @@ func getLinksFromUrl(url string) ([]string, error) {
 
 func getMetricsTar(conn *websocket.Conn, url string) (string, error) {
 	expectedMetricsURL := ""
+	var err error
 	if strings.HasSuffix(url, "/prometheus.tar") {
-		sendWSMessage(conn, "status", "Found direct prometheus URL")
 		expectedMetricsURL = url
 	} else {
-		expectedMetricsURL, err := getTarURLFromProw(conn, url)
+		expectedMetricsURL, err = getTarURLFromProw(conn, url)
 		if err != nil {
 			return expectedMetricsURL, err
 		}
-		sendWSMessage(conn, "status", fmt.Sprintf("Found prometheus archive at %s", expectedMetricsURL))
 	}
+	sendWSMessage(conn, "status", fmt.Sprintf("Found prometheus archive at %s", expectedMetricsURL))
 
 	// Check that metrics/prometheus.tar can be fetched and it non-null
 	sendWSMessage(conn, "status", "Checking if prometheus archive can be fetched")

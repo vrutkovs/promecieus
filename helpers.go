@@ -84,7 +84,41 @@ func getGCSLinks(url string) ([]string, error) {
 	}
 }
 
-func getMetricsTar(baseUrl string) (string, error) {
+func getMetricsTar(url string) (string, error) {
+	expectedMetricsURL := ""
+	if strings.HasSuffix("/prometheus.tar", url) {
+		expectedMetricsURL = url
+	} else {
+		if expectedMetricsURL, err := getTarURLFromProw(url); err != nil {
+			return expectedMetricsURL, err
+		}
+	}
+
+	// Check that metrics/prometheus.tar can be fetched and it non-null
+	var netClient = &http.Client{
+		Timeout: time.Second * 10,
+	}
+	resp, err := netClient.Head(expectedMetricsURL)
+	if err != nil {
+		return "", fmt.Errorf("Failed to fetch %s: %v", expectedMetricsURL, err)
+	}
+	defer resp.Body.Close()
+
+	contentLength := resp.Header.Get("content-length")
+	if contentLength == "" {
+		return "", fmt.Errorf("Failed to check arhive at %s: no content length returned", expectedMetricsURL)
+	}
+	length, err := strconv.Atoi(contentLength)
+	if err != nil {
+		return "", fmt.Errorf("Failed to check arhive at %s: %v", expectedMetricsURL, err)
+	}
+	if length == 0 {
+		return "", fmt.Errorf("Failed to check arhive at %s: archive is empty", expectedMetricsURL)
+	}
+	return expectedMetricsURL, nil
+}
+
+func getTarURLFromProw(baseUrl string) (string, error) {
 	gcsTempUrl := strings.Replace(baseUrl, prowPrefix, gcsPrefix, -1)
 	// Replace prow with gcs to get artifacts link
 	gcsUrl, err := url.Parse(gcsTempUrl)
@@ -152,27 +186,6 @@ func getMetricsTar(baseUrl string) (string, error) {
 		return "", fmt.Errorf("Failed to parse metrics link %s: %v", tempMetricsURL, err)
 	}
 	log.Printf("expectedMetricsURL: %s", expectedMetricsURL.String())
-	// Check that metrics/prometheus.tar can be fetched and it non-null
-	var netClient = &http.Client{
-		Timeout: time.Second * 10,
-	}
-	resp, err := netClient.Head(expectedMetricsURL.String())
-	if err != nil {
-		return "", fmt.Errorf("Failed to fetch %s: %v", expectedMetricsURL.String(), err)
-	}
-	defer resp.Body.Close()
-
-	contentLength := resp.Header.Get("content-length")
-	if contentLength == "" {
-		return "", fmt.Errorf("Failed to check arhive at %s: no content length returned", expectedMetricsURL)
-	}
-	length, err := strconv.Atoi(contentLength)
-	if err != nil {
-		return "", fmt.Errorf("Failed to check arhive at %s: %v", expectedMetricsURL, err)
-	}
-	if length == 0 {
-		return "", fmt.Errorf("Failed to check arhive at %s: archive is empty", expectedMetricsURL)
-	}
 	return expectedMetricsURL.String(), nil
 }
 

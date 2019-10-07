@@ -35,6 +35,7 @@ const (
 	gcsPrefix     = "https://gcsweb-ci.svc.ci.openshift.org"
 	storagePrefix = "https://storage.googleapis.com"
 	promTarPath   = "metrics/prometheus.tar"
+	e2ePrefix     = "e2e"
 )
 
 func generateAppLabel() string {
@@ -124,7 +125,14 @@ func getMetricsTar(baseUrl string) (string, error) {
 	}
 	tmpE2eUrl := ""
 	for _, link := range artifactLinksToplinks {
-		if strings.Contains(link, "/e2e-") {
+		log.Printf("link: %s", link)
+		linkSplitBySlash := strings.Split(link, "/")
+		lastPathSegment := linkSplitBySlash[len(linkSplitBySlash)-1]
+		if len(lastPathSegment) == 0 {
+			lastPathSegment = linkSplitBySlash[len(linkSplitBySlash)-2]
+		}
+		log.Printf("lastPathSection: %s", lastPathSegment)
+		if strings.Contains(lastPathSegment, e2ePrefix) {
 			tmpE2eUrl = gcsPrefix + link
 		}
 	}

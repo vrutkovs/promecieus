@@ -194,7 +194,7 @@ func (s *ServerSettings) cleanupOldDeployements() {
 			log.Println("Deployment will be garbage collected")
 			go s.deletePods(appLabel)
 		} else {
-			log.Println("Deployment will see another sunrise")
+			log.Println("Deployment will live see another dawn")
 		}
 	}
 }

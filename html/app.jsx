@@ -66,7 +66,7 @@ class Message extends React.Component {
       case 'status':
         return (
           lines.map(item =>
-              <ReactBootstrap.Alert variant={variants[this.props.action]}>
+              <ReactBootstrap.Alert className="alert-small" variant={variants[this.props.action]}>
               {item}
               </ReactBootstrap.Alert>
           )

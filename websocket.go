@@ -87,7 +87,7 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, url string) {
 		sendWSMessage(conn, "failure", fmt.Sprintf("Failed to find metrics archive: %s", err.Error()))
 		return
 	}
-	sendWSMessage(conn, "status", fmt.Sprintf("Found archive at %s", metricsTar))
+	sendWSMessage(conn, "status", "Deploying a new prometheus instance")
 
 	// Adjust kustomize and apply it
 	if output, err := applyKustomize(appLabel, metricsTar); err != nil {

@@ -19,7 +19,7 @@ var wsupgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func (s *ServerSettings) sendWSMessage(action string, message string) {
+func sendWSMessage(conn *websocket.Conn, action string, message string) {
 	response := WSMessage{
 		Action:  action,
 		Message: message,
@@ -28,8 +28,8 @@ func (s *ServerSettings) sendWSMessage(action string, message string) {
 	if err != nil {
 		fmt.Println("Can't serialize", response)
 	}
-	if s.statusWebSocket != nil {
-		s.statusWebSocket.WriteMessage(websocket.TextMessage, responseJSON)
+	if conn != nil {
+		conn.WriteMessage(websocket.TextMessage, responseJSON)
 	}
 }
 
@@ -40,8 +40,6 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 		log.Printf("Failed to upgrade ws: %+v", err)
 		return
 	}
-
-	s.statusWebSocket = conn
 
 	for {
 		t, msg, err := conn.ReadMessage()
@@ -62,57 +60,57 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 		}
 		log.Printf("WS message: %+v", m)
 		if m.Action == "new" {
-			go s.createNewPrometheus(m.Message)
+			go s.createNewPrometheus(conn, m.Message)
 		}
 		if m.Action == "delete" {
-			go s.removeProm(m.Message)
+			go s.removeProm(conn, m.Message)
 		}
 	}
 }
 
-func (s *ServerSettings) removeProm(appName string) {
-	s.sendWSMessage("status", fmt.Sprintf("Removing app %s", appName))
+func (s *ServerSettings) removeProm(conn *websocket.Conn, appName string) {
+	sendWSMessage(conn, "status", fmt.Sprintf("Removing app %s", appName))
 	if output, err := s.deletePods(appName); err != nil {
-		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
+		sendWSMessage(conn, "failure", fmt.Sprintf("%s\n%s", output, err.Error()))
 		return
 	} else {
-		s.sendWSMessage("done", output)
+		sendWSMessage(conn, "done", output)
 	}
 }
 
-func (s *ServerSettings) createNewPrometheus(url string) {
+func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, url string) {
 	// Create namespace
 	appLabel := generateAppLabel()
-	s.sendWSMessage("app-label", appLabel)
+	sendWSMessage(conn, "app-label", appLabel)
 	metricsTar, err := getMetricsTar(url)
 	if err != nil {
-		s.sendWSMessage("failure", fmt.Sprintf("Failed to find metrics archive: %s", err.Error()))
+		sendWSMessage(conn, "failure", fmt.Sprintf("Failed to find metrics archive: %s", err.Error()))
 		return
 	}
-	s.sendWSMessage("status", fmt.Sprintf("Found archive at %s", metricsTar))
+	sendWSMessage(conn, "status", fmt.Sprintf("Found archive at %s", metricsTar))
 
 	// Adjust kustomize and apply it
 	if output, err := applyKustomize(appLabel, metricsTar); err != nil {
-		s.sendWSMessage("failure", fmt.Sprintf("%s\n%s", output, err.Error()))
+		sendWSMessage(conn, "failure", fmt.Sprintf("%s\n%s", output, err.Error()))
 		return
 	} else {
-		s.sendWSMessage("status", output)
+		sendWSMessage(conn, "status", output)
 	}
 	// s.sendWSMessage("app-label", appLabel)
 
 	// Expose service and return route host
 	if promRoute, err := s.exposeService(appLabel); err != nil {
-		s.sendWSMessage("failure", err.Error())
+		sendWSMessage(conn, "failure", err.Error())
 		return
 	} else {
-		s.sendWSMessage("link", promRoute)
+		sendWSMessage(conn, "link", promRoute)
 	}
 
-	s.sendWSMessage("status", "Waiting for pods to become ready")
+	sendWSMessage(conn, "status", "Waiting for pods to become ready")
 	if err := s.waitForDeploymentReady(appLabel); err != nil {
-		s.sendWSMessage("failure", err.Error())
+		sendWSMessage(conn, "failure", err.Error())
 		return
 	} else {
-		s.sendWSMessage("done", "Pod is ready")
+		sendWSMessage(conn, "done", "Pod is ready")
 	}
 }

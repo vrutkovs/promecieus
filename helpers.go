@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/gorilla/websocket"
 	"golang.org/x/net/html"
 	"io/ioutil"
 	"log"
@@ -21,10 +20,9 @@ import (
 
 // ServerSettings stores info about the server
 type ServerSettings struct {
-	statusWebSocket *websocket.Conn
-	k8sClient       *k8s.Clientset
-	routeClient     *routeClient.RouteV1Client
-	namespace       string
+	k8sClient   *k8s.Clientset
+	routeClient *routeClient.RouteV1Client
+	namespace   string
 }
 
 const (

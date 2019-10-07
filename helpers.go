@@ -85,7 +85,7 @@ func getLinksFromUrl(url string) ([]string, error) {
 
 func getMetricsTar(conn *websocket.Conn, url string) (string, error) {
 	expectedMetricsURL := ""
-	if strings.HasSuffix("/prometheus.tar", url) {
+	if strings.HasSuffix(url, "/prometheus.tar") {
 		sendWSMessage(conn, "status", "Found direct prometheus URL")
 		expectedMetricsURL = url
 	} else {

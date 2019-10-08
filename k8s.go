@@ -96,14 +96,14 @@ func (s *ServerSettings) waitForDeploymentReady(appLabel string) error {
 		listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", appLabel)}
 		deps, err := s.k8sClient.AppsV1().Deployments(s.namespace).List(listOpts)
 		if err != nil {
-			return false, fmt.Errorf("Failed to list deployments: %v", err)
+			return true, fmt.Errorf("Failed to list deployments: %v", err)
 		}
 		if len(deps.Items) != 1 {
-			return true, fmt.Errorf("No running deployments found")
+			return false, fmt.Errorf("No running deployments found")
 		}
 		dep := deps.Items[0]
 		if dep.Status.Replicas == 0 {
-			return true, fmt.Errorf("Zero pod replicas")
+			return false, fmt.Errorf("Zero pod replicas")
 		}
 		return dep.Status.ReadyReplicas == dep.Status.Replicas, nil
 	})

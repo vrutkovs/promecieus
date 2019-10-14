@@ -19,11 +19,19 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 )
 
+type RQuotaStatus struct {
+	Used int64 `json:"used"`
+	Hard int64 `json:"hard"`
+}
+
 // ServerSettings stores info about the server
 type ServerSettings struct {
 	k8sClient   *k8s.Clientset
 	routeClient *routeClient.RouteV1Client
 	namespace   string
+	rquotaName  string
+	rqStatus    RQuotaStatus
+	conns       map[string]*websocket.Conn
 }
 
 const (

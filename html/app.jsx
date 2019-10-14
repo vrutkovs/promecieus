@@ -86,7 +86,35 @@ class Message extends React.Component {
           </ReactBootstrap.Alert>
         )
         break;
+      default:
+        return (
+          <span></span>
+        )
     }
+  }
+}
+
+class ResourceQuotaStatus extends React.Component {
+  render() {
+    if (this.props === null || this.props.resourceQuota === null) {
+      return (
+        <span></span>
+      )
+    }
+    let used = this.props.resourceQuota.used;
+    let hard = this.props.resourceQuota.hard;
+    if (typeof used == "undefined" || typeof hard == "undefined") {
+      return (
+        <span></span>
+      )
+    }
+    return (
+      <div>
+        <div>Current resource quota</div>
+        <ReactBootstrap.ProgressBar now={used} max={hard}
+          label={used + "/" +hard}/>
+      </div>
+    )
   }
 }
 
@@ -121,7 +149,11 @@ class SearchForm extends React.Component {
       searchInput: '',
       messages: [],
       appName: '',
-      ws: null
+      ws: null,
+      resourceQuota: {
+        used: 0,
+        hard: 0,
+      }
     };
 
     this.handleSearchInput = this.handleSearchInput.bind(this);
@@ -173,6 +205,15 @@ class SearchForm extends React.Component {
     if (message.action === "app-label") {
       this.setState(state => ({appName: message.message}))
     }
+    if (message.action === "rquota") {
+      let rquotaStatus = JSON.parse(message.message)
+      this.setState(state => ({
+        resourceQuota: {
+          used: rquotaStatus.used,
+          hard: rquotaStatus.hard,
+        }
+      }))
+    }
   }
 
   check () {
@@ -199,6 +240,11 @@ class SearchForm extends React.Component {
       console.log("websocket connected");
 
       this.setState({ ws: ws });
+
+      this.state.ws.send(JSON.stringify({
+        'action': 'connect',
+        'message': ''
+      }))
 
       that.timeout = 250; // reset timer to 250 on open of websocket connection
       clearTimeout(connectInterval); // clear Interval on on open of websocket connection
@@ -245,10 +291,10 @@ class SearchForm extends React.Component {
     let searchClass;
     if(this.state.appName != '') {
         messages =
-        <Status
-          messages={this.state.messages}
-          onDeleteApp={this.handleDeleteApp}
-        />
+          <Status
+            messages={this.state.messages}
+            onDeleteApp={this.handleDeleteApp}
+          />
         searchClass = null
     } else {
         messages = []
@@ -262,6 +308,15 @@ class SearchForm extends React.Component {
           onSearchInput={this.handleSearchInput}
           onSearchSubmit={this.handleSearchSubmit}
         />
+        <ReactBootstrap.Row>
+          <ReactBootstrap.Col xs={4}/>
+          <ReactBootstrap.Col xs={4}>
+            <ResourceQuotaStatus
+              resourceQuota={this.state.resourceQuota || null}
+            />
+          </ReactBootstrap.Col>
+          <ReactBootstrap.Col xs={4}/>
+        </ReactBootstrap.Row>
         <br />
         {messages}
       </div>

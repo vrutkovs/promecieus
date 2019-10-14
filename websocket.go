@@ -45,7 +45,10 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 		t, msg, err := conn.ReadMessage()
 		log.Printf("Got ws message: %s", msg)
 		if err != nil {
-			log.Printf("Error reading message: %+v", err)
+			if !websocket.IsCloseError(err, 1001, 1006) {
+				delete(s.conns, conn.RemoteAddr().String())
+				log.Printf("Error reading message: %+v", err)
+			}
 			break
 		}
 		if t != websocket.TextMessage {
@@ -59,12 +62,25 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 			continue
 		}
 		log.Printf("WS message: %+v", m)
-		if m.Action == "new" {
+		switch m.Action {
+		case "connect":
+			s.conns[conn.RemoteAddr().String()] = conn
+			go s.sendResourceQuotaUpdate()
+		case "new":
 			go s.createNewPrometheus(conn, m.Message)
-		}
-		if m.Action == "delete" {
+		case "delete":
 			go s.removeProm(conn, m.Message)
 		}
+	}
+}
+
+func (s *ServerSettings) sendResourceQuotaUpdate() {
+	rqsJSON, err := json.Marshal(s.rqStatus)
+	if err != nil {
+		log.Fatalf("Can't serialize %s", err)
+	}
+	for _, conn := range s.conns {
+		sendWSMessage(conn, "rquota", string(rqsJSON))
 	}
 }
 

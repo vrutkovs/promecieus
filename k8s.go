@@ -10,6 +10,7 @@ import (
 	routeApi "github.com/openshift/api/route/v1"
 	routeClient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	k8s "k8s.io/client-go/kubernetes"
@@ -197,4 +198,38 @@ func (s *ServerSettings) cleanupOldDeployements() {
 			log.Println("Deployment will live see another dawn")
 		}
 	}
+}
+
+func (s *ServerSettings) getResourceQuota() error {
+	rquota, err := s.k8sClient.CoreV1().ResourceQuotas(s.namespace).Get(s.rquotaName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("Failed to setup ResourceQuota watcher: %v", err)
+	}
+	s.rqStatus = RQuotaStatus{
+		Used: rquota.Status.Used.Pods().Value(),
+		Hard: rquota.Status.Hard.Pods().Value()}
+	return nil
+}
+
+func (s *ServerSettings) watchResourceQuota() error {
+	// TODO: Make sure we watch correct resourceQuota
+	watcher, err := s.k8sClient.CoreV1().ResourceQuotas(s.namespace).Watch(metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("Failed to setup ResourceQuota watcher: %v", err)
+	}
+	ch := watcher.ResultChan()
+	for event := range ch {
+		rq, ok := event.Object.(*corev1.ResourceQuota)
+		if !ok || rq.Name != s.rquotaName {
+			log.Printf("Skipping rq update: %v, %s", ok, rq.Name)
+			continue
+		}
+		s.rqStatus = RQuotaStatus{
+			Used: rq.Status.Used.Pods().Value(),
+			Hard: rq.Status.Hard.Pods().Value(),
+		}
+		log.Printf("ResourceQuota update: %v", s.rqStatus)
+		s.sendResourceQuotaUpdate()
+	}
+	return nil
 }

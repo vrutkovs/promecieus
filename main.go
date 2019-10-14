@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/jasonlvhit/gocron"
 	"log"
 	"net/http"
@@ -28,10 +29,30 @@ func main() {
 		namespace = envVarNamespace
 	}
 
-	server := &ServerSettings{k8sClient: k8sC, routeClient: routeC, namespace: namespace}
+	rquotaName := "pod-quota"
+	envVarRquotaName := os.Getenv("QUOTA_NAME")
+	if len(envVarRquotaName) != 0 {
+		rquotaName = envVarRquotaName
+	}
+
+	rqStatus := RQuotaStatus{}
+
+	server := &ServerSettings{
+		k8sClient:   k8sC,
+		routeClient: routeC,
+		namespace:   namespace,
+		rquotaName:  rquotaName,
+		rqStatus:    rqStatus,
+		conns:       make(map[string]*websocket.Conn),
+	}
+	if server.getResourceQuota() != nil {
+		panic("Failed to read initial resource quota")
+	}
+	go server.watchResourceQuota()
+
 	r := gin.New()
 
-	// Load templates from bin assets
+	// Server static HTML
 	r.Use(static.Serve("/", static.LocalFile("./html", true)))
 
 	// Don't log k8s health endpoint

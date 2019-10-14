@@ -8,3 +8,4 @@ resources:
   - 07-route.yaml
   - 08-serviceaccount.yaml
   - 09-rolebinding.yaml
+  - 10-resourcequota.yaml

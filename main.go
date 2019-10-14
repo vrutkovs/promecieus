@@ -40,8 +40,10 @@ func main() {
 		routeClient: routeC,
 		namespace:   namespace,
 		rquotaName:  rquotaName,
+		rqchan:      make(chan RQuotaStatus),
 		conns:       make(map[string]*websocket.Conn),
 	}
+	go server.watchResourceQuota()
 
 	r := gin.New()
 

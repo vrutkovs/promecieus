@@ -30,6 +30,7 @@ type ServerSettings struct {
 	routeClient *routeClient.RouteV1Client
 	namespace   string
 	rquotaName  string
+	rqchan      chan RQuotaStatus
 	conns       map[string]*websocket.Conn
 }
 

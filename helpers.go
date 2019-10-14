@@ -19,11 +19,19 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 )
 
+type RQuotaStatus struct {
+	Used int64
+	Hard int64
+}
+
 // ServerSettings stores info about the server
 type ServerSettings struct {
 	k8sClient   *k8s.Clientset
 	routeClient *routeClient.RouteV1Client
 	namespace   string
+	rquotaName  string
+	rqchan      chan RQuotaStatus
+	conns       []*websocket.Conn
 }
 
 const (
@@ -242,4 +250,13 @@ func applyKustomize(appLabel string, metricsTar string) (string, error) {
 	}
 
 	return string(output), nil
+}
+
+func (s *ServerSettings) notifyResourceQuotaChanges(conn *websocket.Conn) {
+	for {
+		rqs := <-s.rqchan
+		for _, conn := range s.conns {
+			sendWSMessage(conn, "rquota", fmt.Sprintf("%d/%d", rqs.Used, rqs.Hard))
+		}
+	}
 }

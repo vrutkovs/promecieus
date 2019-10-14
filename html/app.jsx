@@ -200,6 +200,11 @@ class SearchForm extends React.Component {
 
       this.setState({ ws: ws });
 
+      this.state.ws.send(JSON.stringify({
+        'action': 'connect',
+        'message': ''
+      }))
+
       that.timeout = 250; // reset timer to 250 on open of websocket connection
       clearTimeout(connectInterval); // clear Interval on on open of websocket connection
     };

@@ -59,13 +59,24 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 			continue
 		}
 		log.Printf("WS message: %+v", m)
-		if m.Action == "new" {
+		switch m.Action {
+		case "connect":
+			go s.fetchInitialResourceQuota(conn)
+			s.conns = append(s.conns, conn)
+		case "new":
 			go s.createNewPrometheus(conn, m.Message)
-		}
-		if m.Action == "delete" {
+		case "delete":
 			go s.removeProm(conn, m.Message)
 		}
 	}
+}
+
+func (s *ServerSettings) fetchInitialResourceQuota(conn *websocket.Conn) {
+	rqs, err := s.getResourceQuota()
+	if err != nil {
+		sendWSMessage(conn, "failure", fmt.Sprintf("Failed to fetch rquota status\n%s", err.Error()))
+	}
+	sendWSMessage(conn, "rquota", fmt.Sprintf("%d/%d", rqs.Used, rqs.Hard))
 }
 
 func (s *ServerSettings) removeProm(conn *websocket.Conn, appName string) {

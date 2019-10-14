@@ -76,7 +76,11 @@ func (s *ServerSettings) fetchInitialResourceQuota(conn *websocket.Conn) {
 	if err != nil {
 		sendWSMessage(conn, "failure", fmt.Sprintf("Failed to fetch rquota status\n%s", err.Error()))
 	}
-	sendWSMessage(conn, "rquota", fmt.Sprintf("%d/%d", rqs.Used, rqs.Hard))
+	rqsJSON, err := json.Marshal(rqs)
+	if err != nil {
+		sendWSMessage(conn, "failure", fmt.Sprintf("Can't serialize %s", err))
+	}
+	sendWSMessage(conn, "rquota", string(rqsJSON))
 }
 
 func (s *ServerSettings) removeProm(conn *websocket.Conn, appName string) {

@@ -20,8 +20,8 @@ import (
 )
 
 type RQuotaStatus struct {
-	Used int64
-	Hard int64
+	Used int64 `json:"used"`
+	Hard int64 `json:"hard"`
 }
 
 // ServerSettings stores info about the server

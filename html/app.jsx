@@ -90,6 +90,15 @@ class Message extends React.Component {
   }
 }
 
+class ResourceQuotaStatus extends React.Component {
+  render() {
+    <ReactBootstrap.ProgressBar
+      now={this.props.resourcequota.used}
+      max={this.props.resourcequota.hard}
+      label="Current resource quota: {this.props.resourcequota.used}/{this.props.resourcequota.hard}"/>
+  }
+}
+
 class Status extends React.Component {
   render() {
     if (this.props.messages.length == 0) {
@@ -121,7 +130,11 @@ class SearchForm extends React.Component {
       searchInput: '',
       messages: [],
       appName: '',
-      ws: null
+      ws: null,
+      resourcequota: {
+        used: 0,
+        hard: 0,
+      }
     };
 
     this.handleSearchInput = this.handleSearchInput.bind(this);
@@ -172,6 +185,15 @@ class SearchForm extends React.Component {
     this.setState(state => ({ messages: [...state.messages, message] }))
     if (message.action === "app-label") {
       this.setState(state => ({appName: message.message}))
+    }
+    if (message.action === "rquota") {
+      rquotaStatus = JSON.parse(message.message)
+      this.setState(state => ({
+        resourcequota: {
+          used: rquotaStatus.used,
+          hard: rquotaStatus.hard,
+        }
+      }))
     }
   }
 

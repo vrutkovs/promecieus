@@ -36,15 +36,6 @@ class SearchBar extends React.Component {
               </ReactBootstrap.Button>
             </ReactBootstrap.Col>
           </ReactBootstrap.Row>
-          <ReactBootstrap.Row>
-            <ReactBootstrap.Col xs={4}/>
-            <ReactBootstrap.Col xs={4}>
-              <ResourceQuotaStatus
-                resourceQuota={this.props.resourceQuota}
-              />
-            </ReactBootstrap.Col>
-            <ReactBootstrap.Col xs={4}/>
-          </ReactBootstrap.Row>
         </ReactBootstrap.FormGroup>
       </ReactBootstrap.Form>
     );
@@ -105,7 +96,7 @@ class Message extends React.Component {
 
 class ResourceQuotaStatus extends React.Component {
   render() {
-    if (this.props === null) {
+    if (this.props === null || this.props.resourceQuota === null) {
       return (
         <span></span>
       )
@@ -118,11 +109,11 @@ class ResourceQuotaStatus extends React.Component {
       )
     }
     return (
-      <ReactBootstrap.Alert variant="light">
+      <div>
         <div>Current resource quota</div>
         <ReactBootstrap.ProgressBar now={used} max={hard}
           label={used + "/" +hard}/>
-      </ReactBootstrap.Alert>
+      </div>
     )
   }
 }
@@ -159,7 +150,7 @@ class SearchForm extends React.Component {
       messages: [],
       appName: '',
       ws: null,
-      resourcequota: {
+      resourceQuota: {
         used: 0,
         hard: 0,
       }
@@ -217,7 +208,7 @@ class SearchForm extends React.Component {
     if (message.action === "rquota") {
       let rquotaStatus = JSON.parse(message.message)
       this.setState(state => ({
-        resourcequota: {
+        resourceQuota: {
           used: rquotaStatus.used,
           hard: rquotaStatus.hard,
         }
@@ -300,10 +291,10 @@ class SearchForm extends React.Component {
     let searchClass;
     if(this.state.appName != '') {
         messages =
-        <Status
-          messages={this.state.messages}
-          onDeleteApp={this.handleDeleteApp}
-        />
+          <Status
+            messages={this.state.messages}
+            onDeleteApp={this.handleDeleteApp}
+          />
         searchClass = null
     } else {
         messages = []
@@ -316,8 +307,16 @@ class SearchForm extends React.Component {
           searchInput={this.state.searchInput}
           onSearchInput={this.handleSearchInput}
           onSearchSubmit={this.handleSearchSubmit}
-          resourceQuota={this.state.resourcequota}
         />
+        <ReactBootstrap.Row>
+          <ReactBootstrap.Col xs={4}/>
+          <ReactBootstrap.Col xs={4}>
+            <ResourceQuotaStatus
+              resourceQuota={this.state.resourceQuota || null}
+            />
+          </ReactBootstrap.Col>
+          <ReactBootstrap.Col xs={4}/>
+        </ReactBootstrap.Row>
         <br />
         {messages}
       </div>

@@ -95,6 +95,10 @@ class Message extends React.Component {
           </ReactBootstrap.Alert>
         )
         break;
+      default:
+        return (
+          <span></span>
+        )
     }
   }
 }

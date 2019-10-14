@@ -35,15 +35,20 @@ func main() {
 		rquotaName = envVarRquotaName
 	}
 
+	rqStatus := RQuotaStatus{}
+
 	server := &ServerSettings{
 		k8sClient:   k8sC,
 		routeClient: routeC,
 		namespace:   namespace,
 		rquotaName:  rquotaName,
-		rqchan:      make(chan RQuotaStatus),
+		rqStatus:    rqStatus,
 		conns:       make(map[string]*websocket.Conn),
 	}
-	server.watchResourceQuota()
+	if server.getResourceQuota() != nil {
+		panic("Failed to read initial resource quota")
+	}
+	go server.watchResourceQuota()
 
 	r := gin.New()
 

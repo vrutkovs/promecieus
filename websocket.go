@@ -65,7 +65,7 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 		switch m.Action {
 		case "connect":
 			s.conns[conn.RemoteAddr().String()] = conn
-			go s.fetchInitialResourceQuota(conn)
+			go s.sendResourceQuotaUpdate()
 		case "new":
 			go s.createNewPrometheus(conn, m.Message)
 		case "delete":
@@ -74,16 +74,14 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 	}
 }
 
-func (s *ServerSettings) fetchInitialResourceQuota(conn *websocket.Conn) {
-	rqs, err := s.getResourceQuota()
+func (s *ServerSettings) sendResourceQuotaUpdate() {
+	rqsJSON, err := json.Marshal(s.rqStatus)
 	if err != nil {
-		sendWSMessage(conn, "failure", fmt.Sprintf("Failed to fetch rquota status\n%s", err.Error()))
+		log.Fatalf("Can't serialize %s", err)
 	}
-	rqsJSON, err := json.Marshal(rqs)
-	if err != nil {
-		sendWSMessage(conn, "failure", fmt.Sprintf("Can't serialize %s", err))
+	for _, conn := range s.conns {
+		sendWSMessage(conn, "rquota", string(rqsJSON))
 	}
-	sendWSMessage(conn, "rquota", string(rqsJSON))
 }
 
 func (s *ServerSettings) removeProm(conn *websocket.Conn, appName string) {

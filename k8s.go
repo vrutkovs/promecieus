@@ -200,14 +200,15 @@ func (s *ServerSettings) cleanupOldDeployements() {
 	}
 }
 
-func (s *ServerSettings) getResourceQuota() (RQuotaStatus, error) {
+func (s *ServerSettings) getResourceQuota() error {
 	rquota, err := s.k8sClient.CoreV1().ResourceQuotas(s.namespace).Get(s.rquotaName, metav1.GetOptions{})
 	if err != nil {
-		return RQuotaStatus{0, 0}, fmt.Errorf("Failed to setup ResourceQuota watcher: %v", err)
+		return fmt.Errorf("Failed to setup ResourceQuota watcher: %v", err)
 	}
-	return RQuotaStatus{
+	s.rqStatus = RQuotaStatus{
 		Used: rquota.Status.Used.Pods().Value(),
-		Hard: rquota.Status.Hard.Pods().Value()}, nil
+		Hard: rquota.Status.Hard.Pods().Value()}
+	return nil
 }
 
 func (s *ServerSettings) watchResourceQuota() error {
@@ -224,12 +225,11 @@ func (s *ServerSettings) watchResourceQuota() error {
 			log.Printf("Skipping rq update: %v, %s", ok, rq.Name)
 			continue
 		}
-		rquotaStatus := RQuotaStatus{
+		s.rqStatus = RQuotaStatus{
 			Used: rq.Status.Used.Pods().Value(),
 			Hard: rq.Status.Hard.Pods().Value(),
 		}
-		log.Printf("Pushed update %v", rquotaStatus)
-		s.rqchan <- rquotaStatus
+		s.sendResourceQuotaUpdate()
 	}
 	return nil
 }

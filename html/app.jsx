@@ -187,7 +187,7 @@ class SearchForm extends React.Component {
       this.setState(state => ({appName: message.message}))
     }
     if (message.action === "rquota") {
-      rquotaStatus = JSON.parse(message.message)
+      let rquotaStatus = JSON.parse(message.message)
       this.setState(state => ({
         resourcequota: {
           used: rquotaStatus.used,

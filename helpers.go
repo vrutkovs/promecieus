@@ -30,8 +30,7 @@ type ServerSettings struct {
 	routeClient *routeClient.RouteV1Client
 	namespace   string
 	rquotaName  string
-	rqchan      chan RQuotaStatus
-	conns       []*websocket.Conn
+	conns       map[string]*websocket.Conn
 }
 
 const (
@@ -250,13 +249,4 @@ func applyKustomize(appLabel string, metricsTar string) (string, error) {
 	}
 
 	return string(output), nil
-}
-
-func (s *ServerSettings) notifyResourceQuotaChanges(conn *websocket.Conn) {
-	for {
-		rqs := <-s.rqchan
-		for _, conn := range s.conns {
-			sendWSMessage(conn, "rquota", fmt.Sprintf("%d/%d", rqs.Used, rqs.Hard))
-		}
-	}
 }

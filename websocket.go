@@ -45,7 +45,10 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 		t, msg, err := conn.ReadMessage()
 		log.Printf("Got ws message: %s", msg)
 		if err != nil {
-			log.Printf("Error reading message: %+v", err)
+			if !websocket.IsCloseError(err, 1001, 1006) {
+				delete(s.conns, conn.RemoteAddr().String())
+				log.Printf("Error reading message: %+v", err)
+			}
 			break
 		}
 		if t != websocket.TextMessage {
@@ -61,8 +64,8 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 		log.Printf("WS message: %+v", m)
 		switch m.Action {
 		case "connect":
+			s.conns[conn.RemoteAddr().String()] = conn
 			go s.fetchInitialResourceQuota(conn)
-			s.conns = append(s.conns, conn)
 		case "new":
 			go s.createNewPrometheus(conn, m.Message)
 		case "delete":

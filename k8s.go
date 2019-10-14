@@ -218,14 +218,17 @@ func (s *ServerSettings) watchResourceQuota() error {
 	}
 	ch := watcher.ResultChan()
 	for event := range ch {
+		log.Println("ResourceQuota update")
 		rq, ok := event.Object.(*corev1.ResourceQuota)
 		if !ok || rq.Name != s.rquotaName {
+			log.Printf("Skipping rq update: %v, %s", ok, rq.Name)
 			continue
 		}
 		rquotaStatus := RQuotaStatus{
 			Used: rq.Status.Used.Pods().Value(),
 			Hard: rq.Status.Hard.Pods().Value(),
 		}
+		log.Printf("Pushed update %v", rquotaStatus)
 		s.rqchan <- rquotaStatus
 	}
 	return nil

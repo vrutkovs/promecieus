@@ -43,7 +43,7 @@ func main() {
 		rqchan:      make(chan RQuotaStatus),
 		conns:       make(map[string]*websocket.Conn),
 	}
-	go server.watchResourceQuota()
+	server.watchResourceQuota()
 
 	r := gin.New()
 

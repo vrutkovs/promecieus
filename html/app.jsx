@@ -36,6 +36,15 @@ class SearchBar extends React.Component {
               </ReactBootstrap.Button>
             </ReactBootstrap.Col>
           </ReactBootstrap.Row>
+          <ReactBootstrap.Row>
+            <ReactBootstrap.Col xs={4}/>
+            <ReactBootstrap.Col xs={4}>
+              <ResourceQuotaStatus
+                resourceQuota={this.props.resourceQuota}
+              />
+            </ReactBootstrap.Col>
+            <ReactBootstrap.Col xs={4}/>
+          </ReactBootstrap.Row>
         </ReactBootstrap.FormGroup>
       </ReactBootstrap.Form>
     );
@@ -92,10 +101,25 @@ class Message extends React.Component {
 
 class ResourceQuotaStatus extends React.Component {
   render() {
-    <ReactBootstrap.ProgressBar
-      now={this.props.resourcequota.used}
-      max={this.props.resourcequota.hard}
-      label="Current resource quota: {this.props.resourcequota.used}/{this.props.resourcequota.hard}"/>
+    if (this.props === null) {
+      return (
+        <span></span>
+      )
+    }
+    let used = this.props.resourceQuota.used;
+    let hard = this.props.resourceQuota.hard;
+    if (typeof used == "undefined" || typeof hard == "undefined") {
+      return (
+        <span></span>
+      )
+    }
+    return (
+      <ReactBootstrap.Alert variant="light">
+        <div>Current resource quota</div>
+        <ReactBootstrap.ProgressBar now={used} max={hard}
+          label={used + "/" +hard}/>
+      </ReactBootstrap.Alert>
+    )
   }
 }
 
@@ -288,6 +312,7 @@ class SearchForm extends React.Component {
           searchInput={this.state.searchInput}
           onSearchInput={this.handleSearchInput}
           onSearchSubmit={this.handleSearchSubmit}
+          resourceQuota={this.state.resourcequota}
         />
         <br />
         {messages}

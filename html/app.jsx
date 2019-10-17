@@ -66,6 +66,7 @@ class Message extends React.Component {
     var lines = this.props.message.trim().split('\n');
     var variants = {
       "status": "info",
+      "progress": "info",
       "failure": "danger",
       "done": "success"
     }
@@ -74,16 +75,21 @@ class Message extends React.Component {
       case 'failure':
       case 'status':
         return (
-          lines.map(item =>
-              <ReactBootstrap.Alert className="alert-small" variant={variants[this.props.action]}>
-              {item}
-              </ReactBootstrap.Alert>
-          )
+          <ReactBootstrap.Alert className="alert-small" variant={variants[this.props.action]}>
+            {this.props.message}
+          </ReactBootstrap.Alert>
+        )
+        break;
+      case 'progress':
+        return (
+          <ReactBootstrap.Alert className="alert-small" variant={variants[this.props.action]}>
+            <ReactBootstrap.Spinner animation="grow" size="sm" /><span>{this.props.message}</span>
+          </ReactBootstrap.Alert>
         )
         break;
       case 'link':
         return (
-          <ReactBootstrap.Alert variant="warning">
+          <ReactBootstrap.Alert className="alert-small" variant="primary">
             <ReactBootstrap.Alert.Link href={this.props.message}>{this.props.message}</ReactBootstrap.Alert.Link>
           </ReactBootstrap.Alert>
         )
@@ -205,6 +211,13 @@ class SearchForm extends React.Component {
     this.setState(state => ({ messages: [...state.messages, message] }))
     if (message.action === "app-label") {
       this.setState(state => ({appName: message.message}))
+    }
+    if (message.action === "done") {
+      // Remove message with progress from the list
+      let newMessages = this.state.messages.filter(function(message){
+        return message.action != "progress";
+      });
+      this.setState(state => ({ messages: newMessages }))
     }
     if (message.action === "rquota") {
       let rquotaStatus = JSON.parse(message.message)

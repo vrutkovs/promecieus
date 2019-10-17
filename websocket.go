@@ -95,28 +95,21 @@ func (s *ServerSettings) removeProm(conn *websocket.Conn, appName string) {
 }
 
 func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, url string) {
-	// Create namespace
+	// Generate a unique app label
 	appLabel := generateAppLabel()
-	sendWSMessage(conn, "app-label", appLabel)
+
+	// Fetch metrics.tar path if prow URL specified
 	metricsTar, err := getMetricsTar(conn, url)
 	if err != nil {
 		sendWSMessage(conn, "failure", fmt.Sprintf("Failed to find metrics archive: %s", err.Error()))
 		return
 	}
+
+	// Create a new app in the namespace and return route
 	sendWSMessage(conn, "status", "Deploying a new prometheus instance")
-
-	// Adjust kustomize and apply it
-	if output, err := applyKustomize(appLabel, metricsTar); err != nil {
-		sendWSMessage(conn, "failure", fmt.Sprintf("%s\n%s", output, err.Error()))
-		return
-	} else {
-		sendWSMessage(conn, "status", output)
-	}
-	// s.sendWSMessage("app-label", appLabel)
-
-	// Expose service and return route host
-	if promRoute, err := s.exposeService(appLabel); err != nil {
-		sendWSMessage(conn, "failure", err.Error())
+	sendWSMessage(conn, "app-label", appLabel)
+	if promRoute, err := s.launchPromApp(appLabel, metricsTar); err != nil {
+		sendWSMessage(conn, "failure", fmt.Sprintf("Failed to run a new app: %s", err.Error()))
 		return
 	} else {
 		sendWSMessage(conn, "link", promRoute)

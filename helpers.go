@@ -4,13 +4,10 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"golang.org/x/net/html"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
-	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -200,54 +197,4 @@ func getTarURLFromProw(conn *websocket.Conn, baseUrl string) (string, error) {
 		return "", fmt.Errorf("Failed to parse metrics link %s: %v", tempMetricsURL, err)
 	}
 	return expectedMetricsURL.String(), nil
-}
-
-func updateKustomization(tmpDir string, metricsTar string, appLabel string) error {
-	// Replace path to fetch metrics and set common labels
-	deploymentPath := fmt.Sprintf("%s/%s", tmpDir, "kustomization.yaml")
-	read, err := ioutil.ReadFile(deploymentPath)
-	if err != nil {
-		return err
-	}
-	newContents := strings.Replace(string(read), "PROMTAR_VALUE", metricsTar, -1)
-	newContents = strings.Replace(newContents, "COMMON_LABEL", appLabel, -1)
-	err = ioutil.WriteFile(deploymentPath, []byte(newContents), 0)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func applyKustomize(appLabel string, metricsTar string) (string, error) {
-	// Make temp dir for assets
-	tmpDir, err := ioutil.TempDir("", appLabel)
-	defer os.RemoveAll(tmpDir)
-	if err != nil {
-		log.Printf(err.Error())
-		return "", err
-	}
-
-	err = RestoreAssets(tmpDir, promTemplates)
-	if err != nil {
-		log.Printf(err.Error())
-		return "", err
-	}
-
-	promTemplatesDir := fmt.Sprintf("%s/%s", tmpDir, promTemplates)
-	err = updateKustomization(promTemplatesDir, metricsTar, appLabel)
-	if err != nil {
-		log.Printf(err.Error())
-		return "", err
-	}
-
-	// Apply manifests via kustomize
-	cmd := exec.Command("oc", "apply", "-k", promTemplatesDir)
-	output, err := cmd.CombinedOutput()
-	log.Printf(string(output))
-	if err != nil {
-		log.Printf(err.Error())
-		return string(output), err
-	}
-
-	return string(output), nil
 }

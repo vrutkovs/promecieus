@@ -10,8 +10,11 @@ import (
 	routeApi "github.com/openshift/api/route/v1"
 	routeClient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -47,48 +50,163 @@ func inClusterLogin() (*k8s.Clientset, *routeClient.RouteV1Client, error) {
 
 }
 
-func (s *ServerSettings) exposeService(appLabel string) (string, error) {
-	// Find created
-	svcList, err := s.k8sClient.CoreV1().Services(s.namespace).List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("app=%s", appLabel),
-	})
-	if err != nil || svcList.Items == nil || len(svcList.Items) == 0 {
-		return "", fmt.Errorf("Failed to list services: %v", err)
+func (s *ServerSettings) launchPromApp(appLabel string, metricsTar string) (string, error) {
+	replicas := int32(1)
+	sharePIDNamespace := true
+
+	// Declare and create new deployment
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("%s-prom", appLabel),
+			Labels: map[string]string{
+				"app": appLabel,
+			},
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": appLabel,
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": appLabel,
+					},
+				},
+				Spec: corev1.PodSpec{
+					InitContainers: []corev1.Container{
+						{
+							Name:  "ci-fetcher",
+							Image: "registry.fedoraproject.org/fedora:30",
+							Command: []string{
+								"/bin/bash",
+								"-c",
+								"set -uxo pipefail && umask 0000 && curl -sL ${PROMTAR} | tar xvz -m",
+							},
+							WorkingDir: "/prometheus/",
+							Env: []corev1.EnvVar{
+								{
+									Name:  "PROMTAR",
+									Value: metricsTar,
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "prometheus-storage-volume",
+									MountPath: "/prometheus/",
+								},
+							},
+						},
+					},
+					Containers: []corev1.Container{
+						{
+							Name:  "prometheus",
+							Image: "prom/prometheus:v2.12.0",
+							Ports: []corev1.ContainerPort{
+								{
+									Name:          "webui",
+									Protocol:      corev1.ProtocolTCP,
+									ContainerPort: 9090,
+								},
+							},
+							ReadinessProbe: &corev1.Probe{
+								TimeoutSeconds:   1,
+								PeriodSeconds:    10,
+								SuccessThreshold: 1,
+								FailureThreshold: 3,
+								Handler: corev1.Handler{
+									HTTPGet: &corev1.HTTPGetAction{
+										Path:   "/",
+										Port:   intstr.FromInt(9090),
+										Scheme: "HTTP",
+									},
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									"cpu":    resource.MustParse("100m"),
+									"memory": resource.MustParse("500Mi"),
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "prometheus-storage-volume",
+									MountPath: "/prometheus/",
+								},
+							},
+						},
+					},
+					ShareProcessNamespace: &sharePIDNamespace,
+					Volumes: []corev1.Volume{
+						{
+							Name: "prometheus-storage-volume",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
-	svc := svcList.Items[0]
-	serviceName := svc.Name
-	servicePort := svc.Spec.Ports[0].TargetPort
+	_, err := s.k8sClient.AppsV1().Deployments(s.namespace).Create(deployment)
+	if err != nil {
+		return "", fmt.Errorf("Failed to create new deployment: %s", err.Error())
+	}
 
-	promRoute := &routeApi.Route{}
-	objectMeta := metav1.ObjectMeta{}
-	objectMeta.Name = appLabel
-	objectMeta.Namespace = s.namespace
-	routeLabels := make(map[string]string)
-	routeLabels["app"] = appLabel
-	objectMeta.Labels = routeLabels
-	promRoute.ObjectMeta = objectMeta
+	service := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: appLabel,
+			Labels: map[string]string{
+				"app": appLabel,
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Port:     9090,
+					Protocol: corev1.ProtocolTCP,
+					Name:     "webui",
+				},
+			},
+			Selector: map[string]string{
+				"app": appLabel,
+			},
+		},
+	}
+	_, err = s.k8sClient.CoreV1().Services(s.namespace).Create(service)
+	if err != nil {
+		return "", fmt.Errorf("Failed to create new service: %s", err.Error())
+	}
 
-	routeSpec := routeApi.RouteSpec{}
-
-	routeTarget := routeApi.RouteTargetReference{}
-	routeTarget.Kind = "Service"
-	routeTarget.Name = serviceName
-	routeSpec.To = routeTarget
-
-	routePort := &routeApi.RoutePort{}
-	routePort.TargetPort = servicePort
-	routeSpec.Port = routePort
-
-	tlsConfig := &routeApi.TLSConfig{}
-	tlsConfig.Termination = routeApi.TLSTerminationEdge
-	tlsConfig.InsecureEdgeTerminationPolicy = routeApi.InsecureEdgeTerminationPolicyRedirect
-	routeSpec.TLS = tlsConfig
-
-	promRoute.Spec = routeSpec
+	promRoute := &routeApi.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: appLabel,
+			Labels: map[string]string{
+				"app": appLabel,
+			},
+		},
+		Spec: routeApi.RouteSpec{
+			To: routeApi.RouteTargetReference{
+				Kind: "Service",
+				Name: appLabel,
+			},
+			Port: &routeApi.RoutePort{
+				TargetPort: intstr.FromInt(9090),
+			},
+			TLS: &routeApi.TLSConfig{
+				Termination:                   routeApi.TLSTerminationEdge,
+				InsecureEdgeTerminationPolicy: routeApi.InsecureEdgeTerminationPolicyRedirect,
+			},
+		},
+	}
 	route, err := s.routeClient.Routes(s.namespace).Create(promRoute)
 	if err != nil {
 		return "", fmt.Errorf("Failed to create route: %v", err)
 	}
+
 	return fmt.Sprintf("https://%s", route.Spec.Host), nil
 }
 

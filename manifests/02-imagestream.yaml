@@ -17,8 +17,8 @@ spec:
       type: Local
   - from:
       kind: DockerImage
-      name: quay.io/openshift/origin-cli:4.2
-    name: cli
+      name: registry.access.redhat.com/ubi8/ubi
+    name: ubi8
     referencePolicy:
       type: Source
   - name: src

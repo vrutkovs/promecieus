@@ -5,7 +5,6 @@ go 1.13
 require (
 	github.com/gin-gonic/contrib v0.0.0-20190923054218-35076c1b2bea
 	github.com/gin-gonic/gin v1.4.0
-	github.com/go-bindata/go-bindata v3.1.2+incompatible // indirect
 	github.com/gogo/protobuf v1.3.0 // indirect
 	github.com/google/btree v1.0.0 // indirect
 	github.com/google/gofuzz v1.0.0 // indirect

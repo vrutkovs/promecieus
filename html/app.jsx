@@ -15,11 +15,24 @@ class SearchBar extends React.Component {
   }
 
   render() {
+    let btn =
+      <ReactBootstrap.Button
+        type="submit"
+        onClick={this.handleSubmit}>
+        Generate
+      </ReactBootstrap.Button>
+    if (this.props != null && this.props.appName != null) {
+      btn =
+        <DeleteAppButton
+          onDeleteApp={this.props.onDeleteApp}
+          appName={this.props.appName}
+          />
+    }
     return (
       <ReactBootstrap.Form horizontal>
         <ReactBootstrap.FormGroup>
           <ReactBootstrap.Row>
-            <ReactBootstrap.Col xs={11}>
+            <ReactBootstrap.Col xs={10}>
               <ReactBootstrap.FormControl
                 autoFocus="true"
                 type="text"
@@ -28,12 +41,8 @@ class SearchBar extends React.Component {
                 onChange={this.handleInputChange}
               />
             </ReactBootstrap.Col>
-            <ReactBootstrap.Col xs={1}>
-              <ReactBootstrap.Button
-                type="submit"
-                onClick={this.handleSubmit}>
-                Generate
-              </ReactBootstrap.Button>
+            <ReactBootstrap.Col xs={2}>
+            {btn}
             </ReactBootstrap.Col>
           </ReactBootstrap.Row>
         </ReactBootstrap.FormGroup>
@@ -46,7 +55,7 @@ class DeleteAppButton extends React.Component {
   render() {
     return (
       <ReactBootstrap.Button variant="warning" onClick={this.props.onDeleteApp}>
-      Delete {this.props.appName} instance
+      Delete {this.props.appName}
       </ReactBootstrap.Button>
     )
   }
@@ -76,13 +85,6 @@ class Message extends React.Component {
         return (
           <ReactBootstrap.Alert variant="warning">
             <ReactBootstrap.Alert.Link href={this.props.message}>{this.props.message}</ReactBootstrap.Alert.Link>
-          </ReactBootstrap.Alert>
-        )
-        break;
-      case 'app-label':
-        return (
-          <ReactBootstrap.Alert variant="warning">
-            <DeleteAppButton onDeleteApp={this.props.onDeleteApp} appName={this.props.message}/>
           </ReactBootstrap.Alert>
         )
         break;
@@ -148,7 +150,7 @@ class SearchForm extends React.Component {
     this.state = {
       searchInput: '',
       messages: [],
-      appName: '',
+      appName: null,
       ws: null,
       resourceQuota: {
         used: 0,
@@ -186,7 +188,6 @@ class SearchForm extends React.Component {
   }
 
   handleDeleteApp(event) {
-    console.log("handleDeleteApp " )
     try {
       this.state.ws.send(JSON.stringify({
         'action': 'delete',
@@ -194,7 +195,7 @@ class SearchForm extends React.Component {
       }))
       // Remove message with app-label from the list
       let newMessages = this.state.messages.slice(1, this.state.messages.length)
-      this.setState(state => ({ messages: newMessages }))
+      this.setState(state => ({ messages: newMessages, appName: null }))
     } catch (error) {
       console.log(error)
     }
@@ -289,12 +290,9 @@ class SearchForm extends React.Component {
   render() {
     let messages;
     let searchClass;
-    if(this.state.appName != '') {
+    if(this.state.appName != null) {
         messages =
-          <Status
-            messages={this.state.messages}
-            onDeleteApp={this.handleDeleteApp}
-          />
+          <Status messages={this.state.messages} />
         searchClass = null
     } else {
         messages = []
@@ -307,6 +305,8 @@ class SearchForm extends React.Component {
           searchInput={this.state.searchInput}
           onSearchInput={this.handleSearchInput}
           onSearchSubmit={this.handleSearchSubmit}
+          onDeleteApp={this.handleDeleteApp}
+          appName={this.state.appName}
         />
         <ReactBootstrap.Row>
           <ReactBootstrap.Col xs={4}/>

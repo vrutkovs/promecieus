@@ -218,13 +218,12 @@ func (s *ServerSettings) waitForDeploymentReady(appLabel string) error {
 			return true, fmt.Errorf("Failed to list deployments: %v", err)
 		}
 		if len(deps.Items) != 1 {
-			return false, fmt.Errorf("No running deployments found")
+			log.Println("No running deployments found")
+			return false, nil
 		}
 		dep := deps.Items[0]
-		if dep.Status.Replicas == 0 {
-			return false, fmt.Errorf("Zero pod replicas")
-		}
-		return dep.Status.ReadyReplicas == dep.Status.Replicas, nil
+		log.Printf("AvailableReplicas: %d", dep.Status.AvailableReplicas)
+		return dep.Status.AvailableReplicas == 1, nil
 	})
 }
 

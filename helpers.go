@@ -94,7 +94,7 @@ func getMetricsTar(conn *websocket.Conn, url string) (string, error) {
 	if strings.HasSuffix(url, "/prometheus.tar") {
 		expectedMetricsURL = url
 	} else {
-		expectedMetricsURL, err = getTarURLFromProw(conn, url)
+		expectedMetricsURL, err = getTarURLFromProw(url)
 		if err != nil {
 			return expectedMetricsURL, err
 		}
@@ -126,14 +126,13 @@ func getMetricsTar(conn *websocket.Conn, url string) (string, error) {
 	return expectedMetricsURL, nil
 }
 
-func getTarURLFromProw(conn *websocket.Conn, baseUrl string) (string, error) {
+func getTarURLFromProw(baseUrl string) (string, error) {
 	gcsTempUrl := strings.Replace(baseUrl, prowPrefix, gcsPrefix, -1)
 	// Replace prow with gcs to get artifacts link
 	gcsUrl, err := url.Parse(gcsTempUrl)
 	if err != nil {
 		return "", fmt.Errorf("Failed to parse GCS URL %s: %v", gcsTempUrl, err)
 	}
-	sendWSMessage(conn, "status", fmt.Sprintf("GCS URL: %s", gcsUrl.String()))
 	// Check that 'artifacts' folder is present
 	gcsToplinks, err := getLinksFromUrl(gcsUrl.String())
 	if err != nil {
@@ -156,7 +155,6 @@ func getTarURLFromProw(conn *websocket.Conn, baseUrl string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Failed to parse artifacts link %s: %v", tmpArtifactsUrl, err)
 	}
-	sendWSMessage(conn, "status", fmt.Sprintf("Artifacts URL: %s", artifactsUrl.String()))
 
 	// Get a list of folders in find ones which contain e2e
 	artifactLinksToplinks, err := getLinksFromUrl(artifactsUrl.String())
@@ -186,12 +184,8 @@ func getTarURLFromProw(conn *websocket.Conn, baseUrl string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Failed to parse e2e link %s: %v", tmpE2eUrl, err)
 	}
-	sendWSMessage(conn, "status", fmt.Sprintf("e2e URL: %s", e2eUrl.String()))
-
 	gcsMetricsURL := fmt.Sprintf("%s%s", e2eUrl.String(), promTarPath)
-	sendWSMessage(conn, "status", fmt.Sprintf("gcsMetricsURL URL: %s", gcsMetricsURL))
 	tempMetricsURL := strings.Replace(gcsMetricsURL, gcsPrefix+"/gcs", storagePrefix, -1)
-	sendWSMessage(conn, "status", fmt.Sprintf("tempMetricsURL URL: %s", tempMetricsURL))
 	expectedMetricsURL, err := url.Parse(tempMetricsURL)
 	if err != nil {
 		return "", fmt.Errorf("Failed to parse metrics link %s: %v", tempMetricsURL, err)

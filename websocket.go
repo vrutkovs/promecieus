@@ -115,7 +115,7 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, url string) {
 		sendWSMessage(conn, "link", promRoute)
 	}
 
-	sendWSMessage(conn, "status", "Waiting for pods to become ready")
+	sendWSMessage(conn, "progress", "Waiting for pods to become ready")
 	if err := s.waitForDeploymentReady(appLabel); err != nil {
 		sendWSMessage(conn, "failure", err.Error())
 		return

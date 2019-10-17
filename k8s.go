@@ -211,18 +211,13 @@ func (s *ServerSettings) launchPromApp(appLabel string, metricsTar string) (stri
 }
 
 func (s *ServerSettings) waitForDeploymentReady(appLabel string) error {
+	depName := fmt.Sprintf("%s-prom", appLabel)
+
 	return wait.PollImmediate(time.Second, deploymentRolloutTime, func() (bool, error) {
-		listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", appLabel)}
-		deps, err := s.k8sClient.AppsV1().Deployments(s.namespace).List(listOpts)
+		dep, err := s.k8sClient.AppsV1().Deployments(s.namespace).Get(depName, metav1.GetOptions{})
 		if err != nil {
-			return true, fmt.Errorf("Failed to list deployments: %v", err)
+			return true, fmt.Errorf("Failed to fetch deployment: %v", err)
 		}
-		if len(deps.Items) != 1 {
-			log.Println("No running deployments found")
-			return false, nil
-		}
-		dep := deps.Items[0]
-		log.Printf("AvailableReplicas: %d", dep.Status.AvailableReplicas)
 		return dep.Status.AvailableReplicas == 1, nil
 	})
 }

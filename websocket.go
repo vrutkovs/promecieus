@@ -97,6 +97,7 @@ func (s *ServerSettings) removeProm(conn *websocket.Conn, appName string) {
 func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, url string) {
 	// Generate a unique app label
 	appLabel := generateAppLabel()
+	sendWSMessage(conn, "app-label", appLabel)
 
 	// Fetch metrics.tar path if prow URL specified
 	prowInfo, err := getMetricsTar(conn, url)
@@ -107,7 +108,6 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, url string) {
 
 	// Create a new app in the namespace and return route
 	sendWSMessage(conn, "status", "Deploying a new prometheus instance")
-	sendWSMessage(conn, "app-label", appLabel)
 
 	metricsTar := prowInfo.MetricsUrl
 	if promRoute, err := s.launchPromApp(appLabel, metricsTar); err != nil {

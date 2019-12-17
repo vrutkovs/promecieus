@@ -36,7 +36,14 @@ type ServerSettings struct {
 
 // ProwJSON stores test start / finished timestamp
 type ProwJSON struct {
-	Timestamp string `json:"timestamp"`
+	Timestamp int `json:"timestamp"`
+}
+
+// ProwLinks stores all links and data collected via scanning for metrics
+type ProwInfo struct {
+	Started    time.Time
+	Finished   time.Time
+	MetricsUrl string
 }
 
 const (
@@ -96,17 +103,13 @@ func getLinksFromUrl(url string) ([]string, error) {
 	}
 }
 
-func getMetricsTar(conn *websocket.Conn, url string) (string, error) {
-	expectedMetricsURL := ""
-	var err error
-	if strings.HasSuffix(url, "/prometheus.tar") {
-		expectedMetricsURL = url
-	} else {
-		expectedMetricsURL, err = getTarURLFromProw(url)
-		if err != nil {
-			return expectedMetricsURL, err
-		}
+func getMetricsTar(conn *websocket.Conn, url string) (ProwInfo, error) {
+	prowInfo, err := getTarURLFromProw(url)
+	if err != nil {
+		return prowInfo, err
 	}
+	expectedMetricsURL := prowInfo.MetricsUrl
+
 	sendWSMessage(conn, "status", fmt.Sprintf("Found prometheus archive at %s", expectedMetricsURL))
 
 	// Check that metrics/prometheus.tar can be fetched and it non-null
@@ -116,38 +119,54 @@ func getMetricsTar(conn *websocket.Conn, url string) (string, error) {
 	}
 	resp, err := netClient.Head(expectedMetricsURL)
 	if err != nil {
-		return "", fmt.Errorf("Failed to fetch %s: %v", expectedMetricsURL, err)
+		return prowInfo, fmt.Errorf("Failed to fetch %s: %v", expectedMetricsURL, err)
 	}
 	defer resp.Body.Close()
 
 	contentLength := resp.Header.Get("content-length")
 	if contentLength == "" {
-		return "", fmt.Errorf("Failed to check archive at %s: no content length returned", expectedMetricsURL)
+		return prowInfo, fmt.Errorf("Failed to check archive at %s: no content length returned", expectedMetricsURL)
 	}
 	length, err := strconv.Atoi(contentLength)
 	if err != nil {
-		return "", fmt.Errorf("Failed to check archive at %s: %v", expectedMetricsURL, err)
+		return prowInfo, fmt.Errorf("Failed to check archive at %s: %v", expectedMetricsURL, err)
 	}
 	if length == 0 {
-		return "", fmt.Errorf("Failed to check archive at %s: archive is empty", expectedMetricsURL)
+		return prowInfo, fmt.Errorf("Failed to check archive at %s: archive is empty", expectedMetricsURL)
 	}
-	return expectedMetricsURL, nil
+	return prowInfo, nil
 }
 
-func getTarURLFromProw(baseUrl string) (string, error) {
+func getTarURLFromProw(baseUrl string) (ProwInfo, error) {
+	prowInfo := ProwInfo{}
+
 	gcsTempUrl := strings.Replace(baseUrl, prowPrefix, gcsPrefix, -1)
 	// Replace prow with gcs to get artifacts link
 	gcsUrl, err := url.Parse(gcsTempUrl)
 	if err != nil {
-		return "", fmt.Errorf("Failed to parse GCS URL %s: %v", gcsTempUrl, err)
+		return prowInfo, fmt.Errorf("Failed to parse GCS URL %s: %v", gcsTempUrl, err)
 	}
+
+	// Fetch start and finish time of the test
+	startTime, err := getTimeStampFromProwJson(fmt.Sprintf("%s/started.json", gcsUrl))
+	if err != nil {
+		return prowInfo, fmt.Errorf("Failed to fetch test start time: %v", err)
+	}
+	prowInfo.Started = startTime
+
+	finishedTime, err := getTimeStampFromProwJson(fmt.Sprintf("%s/finished.json", gcsUrl))
+	if err != nil {
+		return prowInfo, fmt.Errorf("Failed to fetch test finshed time: %v", err)
+	}
+	prowInfo.Finished = finishedTime
+
 	// Check that 'artifacts' folder is present
 	gcsToplinks, err := getLinksFromUrl(gcsUrl.String())
 	if err != nil {
-		return "", fmt.Errorf("Failed to fetch top-level GCS link at %s: %v", gcsUrl, err)
+		return prowInfo, fmt.Errorf("Failed to fetch top-level GCS link at %s: %v", gcsUrl, err)
 	}
 	if len(gcsToplinks) == 0 {
-		return "", fmt.Errorf("No top-level GCS links at %s found", gcsUrl)
+		return prowInfo, fmt.Errorf("No top-level GCS links at %s found", gcsUrl)
 	}
 	tmpArtifactsUrl := ""
 	for _, link := range gcsToplinks {
@@ -157,20 +176,20 @@ func getTarURLFromProw(baseUrl string) (string, error) {
 		}
 	}
 	if tmpArtifactsUrl == "" {
-		return "", fmt.Errorf("Failed to find artifacts link in %v", gcsToplinks)
+		return prowInfo, fmt.Errorf("Failed to find artifacts link in %v", gcsToplinks)
 	}
 	artifactsUrl, err := url.Parse(tmpArtifactsUrl)
 	if err != nil {
-		return "", fmt.Errorf("Failed to parse artifacts link %s: %v", tmpArtifactsUrl, err)
+		return prowInfo, fmt.Errorf("Failed to parse artifacts link %s: %v", tmpArtifactsUrl, err)
 	}
 
 	// Get a list of folders in find ones which contain e2e
 	artifactLinksToplinks, err := getLinksFromUrl(artifactsUrl.String())
 	if err != nil {
-		return "", fmt.Errorf("Failed to fetch artifacts link at %s: %v", gcsUrl, err)
+		return prowInfo, fmt.Errorf("Failed to fetch artifacts link at %s: %v", gcsUrl, err)
 	}
 	if len(artifactLinksToplinks) == 0 {
-		return "", fmt.Errorf("No artifact links at %s found", gcsUrl)
+		return prowInfo, fmt.Errorf("No artifact links at %s found", gcsUrl)
 	}
 	tmpE2eUrl := ""
 	for _, link := range artifactLinksToplinks {
@@ -186,19 +205,20 @@ func getTarURLFromProw(baseUrl string) (string, error) {
 		}
 	}
 	if tmpE2eUrl == "" {
-		return "", fmt.Errorf("Failed to find e2e link in %v", artifactLinksToplinks)
+		return prowInfo, fmt.Errorf("Failed to find e2e link in %v", artifactLinksToplinks)
 	}
 	e2eUrl, err := url.Parse(tmpE2eUrl)
 	if err != nil {
-		return "", fmt.Errorf("Failed to parse e2e link %s: %v", tmpE2eUrl, err)
+		return prowInfo, fmt.Errorf("Failed to parse e2e link %s: %v", tmpE2eUrl, err)
 	}
 	gcsMetricsURL := fmt.Sprintf("%s%s", e2eUrl.String(), promTarPath)
 	tempMetricsURL := strings.Replace(gcsMetricsURL, gcsPrefix+"/gcs", storagePrefix, -1)
 	expectedMetricsURL, err := url.Parse(tempMetricsURL)
 	if err != nil {
-		return "", fmt.Errorf("Failed to parse metrics link %s: %v", tempMetricsURL, err)
+		return prowInfo, fmt.Errorf("Failed to parse metrics link %s: %v", tempMetricsURL, err)
 	}
-	return expectedMetricsURL.String(), nil
+	prowInfo.MetricsUrl = expectedMetricsURL.String()
+	return prowInfo, nil
 }
 
 func getTimeStampFromProwJson(rawUrl string) (time.Time, error) {
@@ -227,10 +247,5 @@ func getTimeStampFromProwJson(rawUrl string) (time.Time, error) {
 		return time.Now(), fmt.Errorf("Failed to unmarshal json %s: %v", body, err)
 	}
 
-	i, err := strconv.ParseInt(prowInfo.Timestamp, 10, 64)
-	if err != nil {
-		return time.Now(), fmt.Errorf("Failed to parse timestamp %s: %v", prowInfo.Timestamp, err)
-	}
-
-	return time.Unix(i, 0), nil
+	return time.Unix(int64(prowInfo.Timestamp), 0), nil
 }

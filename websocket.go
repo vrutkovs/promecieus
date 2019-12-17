@@ -99,7 +99,7 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, url string) {
 	appLabel := generateAppLabel()
 
 	// Fetch metrics.tar path if prow URL specified
-	metricsTar, err := getMetricsTar(conn, url)
+	prowInfo, err := getMetricsTar(conn, url)
 	if err != nil {
 		sendWSMessage(conn, "failure", fmt.Sprintf("Failed to find metrics archive: %s", err.Error()))
 		return
@@ -108,11 +108,20 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, url string) {
 	// Create a new app in the namespace and return route
 	sendWSMessage(conn, "status", "Deploying a new prometheus instance")
 	sendWSMessage(conn, "app-label", appLabel)
+
+	metricsTar := prowInfo.MetricsUrl
 	if promRoute, err := s.launchPromApp(appLabel, metricsTar); err != nil {
 		sendWSMessage(conn, "failure", fmt.Sprintf("Failed to run a new app: %s", err.Error()))
 		return
 	} else {
-		sendWSMessage(conn, "link", promRoute)
+		// Calculate a range in minutes between start and finish
+		elapsed := int(prowInfo.Finished.Sub(prowInfo.Started).Minutes())
+		finishedDate := prowInfo.Finished.Format("2006-02-06 15:04")
+
+		// Send a sample query so that user would not have to rediscover start and finished time
+		sampleQuery := fmt.Sprintf("%s/graph?g0.range_input=%dm&g0.end_input=%s&g0.expr=up&g0.tab=0", promRoute, elapsed, finishedDate)
+
+		sendWSMessage(conn, "link", sampleQuery)
 	}
 
 	sendWSMessage(conn, "progress", "Waiting for pods to become ready")

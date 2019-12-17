@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"golang.org/x/net/html"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -16,6 +18,7 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 )
 
+// RQuotaStatus stores ResourceQuota info
 type RQuotaStatus struct {
 	Used int64 `json:"used"`
 	Hard int64 `json:"hard"`
@@ -29,6 +32,11 @@ type ServerSettings struct {
 	rquotaName  string
 	rqStatus    RQuotaStatus
 	conns       map[string]*websocket.Conn
+}
+
+// ProwJSON stores test start / finished timestamp
+type ProwJSON struct {
+	Timestamp string `json:"timestamp"`
 }
 
 const (
@@ -191,4 +199,38 @@ func getTarURLFromProw(baseUrl string) (string, error) {
 		return "", fmt.Errorf("Failed to parse metrics link %s: %v", tempMetricsURL, err)
 	}
 	return expectedMetricsURL.String(), nil
+}
+
+func getTimeStampFromProwJson(rawUrl string) (time.Time, error) {
+	jsonUrl, err := url.Parse(rawUrl)
+	if err != nil {
+		return time.Now(), fmt.Errorf("Failed to fetch prow JSOM at %s: %v", rawUrl, err)
+	}
+
+	var netClient = &http.Client{
+		Timeout: time.Second * 10,
+	}
+	resp, err := netClient.Get(jsonUrl.String())
+	if err != nil {
+		return time.Now(), fmt.Errorf("Failed to fetch %s: %v", jsonUrl.String(), err)
+	}
+	defer resp.Body.Close()
+
+	body, readErr := ioutil.ReadAll(resp.Body)
+	if readErr != nil {
+		return time.Now(), fmt.Errorf("Failed to read body at %s: %v", jsonUrl.String(), err)
+	}
+
+	var prowInfo ProwJSON
+	err = json.Unmarshal(body, &prowInfo)
+	if err != nil {
+		return time.Now(), fmt.Errorf("Failed to unmarshal json %s: %v", body, err)
+	}
+
+	i, err := strconv.ParseInt(prowInfo.Timestamp, 10, 64)
+	if err != nil {
+		return time.Now(), fmt.Errorf("Failed to parse timestamp %s: %v", prowInfo.Timestamp, err)
+	}
+
+	return time.Unix(i, 0), nil
 }

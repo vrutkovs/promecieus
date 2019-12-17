@@ -315,11 +315,13 @@ func (s *ServerSettings) cleanupOldDeployements() {
 func (s *ServerSettings) getResourceQuota() error {
 	rquota, err := s.k8sClient.CoreV1().ResourceQuotas(s.namespace).Get(s.rquotaName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("Failed to setup ResourceQuota watcher: %v", err)
+		return fmt.Errorf("Failed to get ResourceQuota: %v", err)
 	}
 	s.rqStatus = RQuotaStatus{
 		Used: rquota.Status.Used.Pods().Value(),
-		Hard: rquota.Status.Hard.Pods().Value()}
+		Hard: rquota.Status.Hard.Pods().Value(),
+	}
+	s.sendResourceQuotaUpdate()
 	return nil
 }
 

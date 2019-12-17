@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"log"
+	"net/url"
 )
 
 // WSMessage represents websocket message format
@@ -94,13 +95,13 @@ func (s *ServerSettings) removeProm(conn *websocket.Conn, appName string) {
 	}
 }
 
-func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, url string) {
+func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, rawUrl string) {
 	// Generate a unique app label
 	appLabel := generateAppLabel()
 	sendWSMessage(conn, "app-label", appLabel)
 
 	// Fetch metrics.tar path if prow URL specified
-	prowInfo, err := getMetricsTar(conn, url)
+	prowInfo, err := getMetricsTar(conn, rawUrl)
 	if err != nil {
 		sendWSMessage(conn, "failure", fmt.Sprintf("Failed to find metrics archive: %s", err.Error()))
 		return
@@ -116,10 +117,11 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, url string) {
 	} else {
 		// Calculate a range in minutes between start and finish
 		elapsed := int(prowInfo.Finished.Sub(prowInfo.Started).Minutes())
-		finishedDate := prowInfo.Finished.Format("2006-02-06 15:04")
+		finishedDate := url.QueryEscape(prowInfo.Finished.Format("2006-01-02 15:04"))
 
 		// Send a sample query so that user would not have to rediscover start and finished time
-		sampleQuery := fmt.Sprintf("%s/graph?g0.range_input=%dm&g0.end_input=%s&g0.expr=up&g0.tab=0", promRoute, elapsed, finishedDate)
+		query := fmt.Sprintf("g0.range_input=%dm&g0.end_input=%s&g0.expr=up&g0.tab=0", elapsed, finishedDate)
+		sampleQuery := fmt.Sprintf("%s/graph?%s", promRoute, query)
 
 		sendWSMessage(conn, "link", sampleQuery)
 	}

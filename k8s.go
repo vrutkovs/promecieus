@@ -323,25 +323,27 @@ func (s *ServerSettings) getResourceQuota() error {
 	return nil
 }
 
-func (s *ServerSettings) watchResourceQuota() error {
-	// TODO: Make sure we watch correct resourceQuota
-	watcher, err := s.k8sClient.CoreV1().ResourceQuotas(s.namespace).Watch(metav1.ListOptions{})
-	if err != nil {
-		return fmt.Errorf("Failed to setup ResourceQuota watcher: %v", err)
-	}
-	ch := watcher.ResultChan()
-	for event := range ch {
-		rq, ok := event.Object.(*corev1.ResourceQuota)
-		if !ok || rq.Name != s.rquotaName {
-			log.Printf("Skipping rq update: %v, %s", ok, rq.Name)
+func (s *ServerSettings) watchResourceQuota() {
+	for {
+		// TODO: Make sure we watch correct resourceQuota
+		watcher, err := s.k8sClient.CoreV1().ResourceQuotas(s.namespace).Watch(metav1.ListOptions{})
+		if err != nil {
+			log.Println("Failed to setup ResourceQuota watcher: %v", err)
 			continue
 		}
-		s.rqStatus = RQuotaStatus{
-			Used: rq.Status.Used.Pods().Value(),
-			Hard: rq.Status.Hard.Pods().Value(),
+		ch := watcher.ResultChan()
+		for event := range ch {
+			rq, ok := event.Object.(*corev1.ResourceQuota)
+			if !ok || rq.Name != s.rquotaName {
+				log.Printf("Skipping rq update: %v, %s", ok, rq.Name)
+				continue
+			}
+			s.rqStatus = RQuotaStatus{
+				Used: rq.Status.Used.Pods().Value(),
+				Hard: rq.Status.Hard.Pods().Value(),
+			}
+			log.Printf("ResourceQuota update: %v", s.rqStatus)
+			s.sendResourceQuotaUpdate()
 		}
-		log.Printf("ResourceQuota update: %v", s.rqStatus)
-		s.sendResourceQuotaUpdate()
 	}
-	return nil
 }

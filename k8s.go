@@ -24,6 +24,7 @@ const (
 	deploymentRolloutTime = 5 * time.Minute
 	deploymentLifetime    = 8 * time.Hour
 	prometheusImage       = "prom/prometheus:v2.17.1"
+	ciFetcherImage        = "registry.fedoraproject.org/fedora:31"
 )
 
 func inClusterLogin() (*k8s.Clientset, *routeClient.RouteV1Client, error) {
@@ -80,7 +81,7 @@ func (s *ServerSettings) launchPromApp(appLabel string, metricsTar string) (stri
 					InitContainers: []corev1.Container{
 						{
 							Name:  "ci-fetcher",
-							Image: "registry.fedoraproject.org/fedora:30",
+							Image: ciFetcherImage,
 							Command: []string{
 								"/bin/bash",
 								"-c",

@@ -22,6 +22,9 @@ spec:
     type: Git
   strategy:
     sourceStrategy:
+      env:
+      - name: "INSTALL_URL"
+        value: "github.com/vrutkovs/promecieus"
       from:
         kind: ImageStreamTag
         name: promecieus:golang1.11

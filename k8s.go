@@ -23,6 +23,7 @@ import (
 const (
 	deploymentRolloutTime = 5 * time.Minute
 	deploymentLifetime    = 8 * time.Hour
+	prometheusImage       = "prom/prometheus:v2.17.1"
 )
 
 func inClusterLogin() (*k8s.Clientset, *routeClient.RouteV1Client, error) {
@@ -103,7 +104,7 @@ func (s *ServerSettings) launchPromApp(appLabel string, metricsTar string) (stri
 					Containers: []corev1.Container{
 						{
 							Name:  "prometheus",
-							Image: "prom/prometheus:v2.12.0",
+							Image: prometheusImage,
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "webui",

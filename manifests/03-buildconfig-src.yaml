@@ -27,7 +27,7 @@ spec:
         value: "github.com/vrutkovs/promecieus"
       from:
         kind: ImageStreamTag
-        name: promecieus:golang1.11
+        name: promecieus:golang1.13
     type: Source
   successfulBuildsHistoryLimit: 5
   triggers:

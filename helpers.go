@@ -55,6 +55,7 @@ const (
 	gcsPrefix     = "https://gcsweb-ci.svc.ci.openshift.org"
 	storagePrefix = "https://storage.googleapis.com"
 	promTarPath   = "metrics/prometheus.tar"
+	extraPath     = "gather-extra"
 	e2ePrefix     = "e2e"
 )
 
@@ -207,6 +208,7 @@ func getTarURLFromProw(baseURL string) (ProwInfo, error) {
 		log.Printf("lastPathSection: %s", lastPathSegment)
 		if strings.Contains(lastPathSegment, e2ePrefix) {
 			tmpE2eURL = gcsPrefix + link
+			break
 		}
 	}
 	if tmpE2eURL == "" {
@@ -216,6 +218,33 @@ func getTarURLFromProw(baseURL string) (ProwInfo, error) {
 	if err != nil {
 		return prowInfo, fmt.Errorf("Failed to parse e2e link %s: %v", tmpE2eURL, err)
 	}
+
+	// Support new-style jobs
+	e2eToplinks, err := getLinksFromURL(e2eURL.String())
+	if err != nil {
+		return prowInfo, fmt.Errorf("Failed to fetch artifacts link at %s: %v", e2eURL, err)
+	}
+	if len(e2eToplinks) == 0 {
+		return prowInfo, fmt.Errorf("No top links at %s found", e2eURL)
+	}
+	for _, link := range e2eToplinks {
+		log.Printf("link: %s", link)
+		linkSplitBySlash := strings.Split(link, "/")
+		lastPathSegment := linkSplitBySlash[len(linkSplitBySlash)-1]
+		if len(lastPathSegment) == 0 {
+			lastPathSegment = linkSplitBySlash[len(linkSplitBySlash)-2]
+		}
+		log.Printf("lastPathSection: %s", lastPathSegment)
+		if lastPathSegment == extraPath {
+			tmpE2eURL = gcsPrefix + link
+			e2eURL, err = url.Parse(tmpE2eURL)
+			if err != nil {
+				return prowInfo, fmt.Errorf("Failed to parse e2e link %s: %v", tmpE2eURL, err)
+			}
+			break
+		}
+	}
+
 	gcsMetricsURL := fmt.Sprintf("%s%s", e2eURL.String(), promTarPath)
 	tempMetricsURL := strings.Replace(gcsMetricsURL, gcsPrefix+"/gcs", storagePrefix, -1)
 	expectedMetricsURL, err := url.Parse(tempMetricsURL)

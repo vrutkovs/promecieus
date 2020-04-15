@@ -124,6 +124,10 @@ func getMetricsTar(conn *websocket.Conn, url string) (ProwInfo, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != 200 {
+		return prowInfo, fmt.Errorf("Failed to check archive at %s: returned %s", expectedMetricsURL, resp.Status)
+	}
+
 	contentLength := resp.Header.Get("content-length")
 	if contentLength == "" {
 		return prowInfo, fmt.Errorf("Failed to check archive at %s: no content length returned", expectedMetricsURL)

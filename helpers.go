@@ -3,8 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/websocket"
-	"golang.org/x/net/html"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -13,6 +11,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"golang.org/x/net/html"
 
 	routeClient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 	k8s "k8s.io/client-go/kubernetes"
@@ -39,11 +40,11 @@ type ProwJSON struct {
 	Timestamp int `json:"timestamp"`
 }
 
-// ProwLinks stores all links and data collected via scanning for metrics
+// ProwInfo stores all links and data collected via scanning for metrics
 type ProwInfo struct {
 	Started    time.Time
 	Finished   time.Time
-	MetricsUrl string
+	MetricsURL string
 }
 
 const (
@@ -67,7 +68,7 @@ func generateAppLabel() string {
 	return string(b)
 }
 
-func getLinksFromUrl(url string) ([]string, error) {
+func getLinksFromURL(url string) ([]string, error) {
 	links := []string{}
 
 	var netClient = &http.Client{
@@ -108,7 +109,7 @@ func getMetricsTar(conn *websocket.Conn, url string) (ProwInfo, error) {
 	if err != nil {
 		return prowInfo, err
 	}
-	expectedMetricsURL := prowInfo.MetricsUrl
+	expectedMetricsURL := prowInfo.MetricsURL
 
 	sendWSMessage(conn, "status", fmt.Sprintf("Found prometheus archive at %s", expectedMetricsURL))
 
@@ -137,61 +138,61 @@ func getMetricsTar(conn *websocket.Conn, url string) (ProwInfo, error) {
 	return prowInfo, nil
 }
 
-func getTarURLFromProw(baseUrl string) (ProwInfo, error) {
+func getTarURLFromProw(baseURL string) (ProwInfo, error) {
 	prowInfo := ProwInfo{}
 
-	gcsTempUrl := strings.Replace(baseUrl, prowPrefix, gcsPrefix, -1)
+	gcsTempURL := strings.Replace(baseURL, prowPrefix, gcsPrefix, -1)
 	// Replace prow with gcs to get artifacts link
-	gcsUrl, err := url.Parse(gcsTempUrl)
+	gcsURL, err := url.Parse(gcsTempURL)
 	if err != nil {
-		return prowInfo, fmt.Errorf("Failed to parse GCS URL %s: %v", gcsTempUrl, err)
+		return prowInfo, fmt.Errorf("Failed to parse GCS URL %s: %v", gcsTempURL, err)
 	}
 
 	// Fetch start and finish time of the test
-	startTime, err := getTimeStampFromProwJson(fmt.Sprintf("%s/started.json", gcsUrl))
+	startTime, err := getTimeStampFromProwJSON(fmt.Sprintf("%s/started.json", gcsURL))
 	if err != nil {
 		return prowInfo, fmt.Errorf("Failed to fetch test start time: %v", err)
 	}
 	prowInfo.Started = startTime
 
-	finishedTime, err := getTimeStampFromProwJson(fmt.Sprintf("%s/finished.json", gcsUrl))
+	finishedTime, err := getTimeStampFromProwJSON(fmt.Sprintf("%s/finished.json", gcsURL))
 	if err != nil {
 		return prowInfo, fmt.Errorf("Failed to fetch test finshed time: %v", err)
 	}
 	prowInfo.Finished = finishedTime
 
 	// Check that 'artifacts' folder is present
-	gcsToplinks, err := getLinksFromUrl(gcsUrl.String())
+	gcsToplinks, err := getLinksFromURL(gcsURL.String())
 	if err != nil {
-		return prowInfo, fmt.Errorf("Failed to fetch top-level GCS link at %s: %v", gcsUrl, err)
+		return prowInfo, fmt.Errorf("Failed to fetch top-level GCS link at %s: %v", gcsURL, err)
 	}
 	if len(gcsToplinks) == 0 {
-		return prowInfo, fmt.Errorf("No top-level GCS links at %s found", gcsUrl)
+		return prowInfo, fmt.Errorf("No top-level GCS links at %s found", gcsURL)
 	}
-	tmpArtifactsUrl := ""
+	tmpArtifactsURL := ""
 	for _, link := range gcsToplinks {
 		if strings.HasSuffix(link, "artifacts/") {
-			tmpArtifactsUrl = gcsPrefix + link
+			tmpArtifactsURL = gcsPrefix + link
 			break
 		}
 	}
-	if tmpArtifactsUrl == "" {
+	if tmpArtifactsURL == "" {
 		return prowInfo, fmt.Errorf("Failed to find artifacts link in %v", gcsToplinks)
 	}
-	artifactsUrl, err := url.Parse(tmpArtifactsUrl)
+	artifactsURL, err := url.Parse(tmpArtifactsURL)
 	if err != nil {
-		return prowInfo, fmt.Errorf("Failed to parse artifacts link %s: %v", tmpArtifactsUrl, err)
+		return prowInfo, fmt.Errorf("Failed to parse artifacts link %s: %v", tmpArtifactsURL, err)
 	}
 
 	// Get a list of folders in find ones which contain e2e
-	artifactLinksToplinks, err := getLinksFromUrl(artifactsUrl.String())
+	artifactLinksToplinks, err := getLinksFromURL(artifactsURL.String())
 	if err != nil {
-		return prowInfo, fmt.Errorf("Failed to fetch artifacts link at %s: %v", gcsUrl, err)
+		return prowInfo, fmt.Errorf("Failed to fetch artifacts link at %s: %v", gcsURL, err)
 	}
 	if len(artifactLinksToplinks) == 0 {
-		return prowInfo, fmt.Errorf("No artifact links at %s found", gcsUrl)
+		return prowInfo, fmt.Errorf("No artifact links at %s found", gcsURL)
 	}
-	tmpE2eUrl := ""
+	tmpE2eURL := ""
 	for _, link := range artifactLinksToplinks {
 		log.Printf("link: %s", link)
 		linkSplitBySlash := strings.Split(link, "/")
@@ -201,44 +202,44 @@ func getTarURLFromProw(baseUrl string) (ProwInfo, error) {
 		}
 		log.Printf("lastPathSection: %s", lastPathSegment)
 		if strings.Contains(lastPathSegment, e2ePrefix) {
-			tmpE2eUrl = gcsPrefix + link
+			tmpE2eURL = gcsPrefix + link
 		}
 	}
-	if tmpE2eUrl == "" {
+	if tmpE2eURL == "" {
 		return prowInfo, fmt.Errorf("Failed to find e2e link in %v", artifactLinksToplinks)
 	}
-	e2eUrl, err := url.Parse(tmpE2eUrl)
+	e2eURL, err := url.Parse(tmpE2eURL)
 	if err != nil {
-		return prowInfo, fmt.Errorf("Failed to parse e2e link %s: %v", tmpE2eUrl, err)
+		return prowInfo, fmt.Errorf("Failed to parse e2e link %s: %v", tmpE2eURL, err)
 	}
-	gcsMetricsURL := fmt.Sprintf("%s%s", e2eUrl.String(), promTarPath)
+	gcsMetricsURL := fmt.Sprintf("%s%s", e2eURL.String(), promTarPath)
 	tempMetricsURL := strings.Replace(gcsMetricsURL, gcsPrefix+"/gcs", storagePrefix, -1)
 	expectedMetricsURL, err := url.Parse(tempMetricsURL)
 	if err != nil {
 		return prowInfo, fmt.Errorf("Failed to parse metrics link %s: %v", tempMetricsURL, err)
 	}
-	prowInfo.MetricsUrl = expectedMetricsURL.String()
+	prowInfo.MetricsURL = expectedMetricsURL.String()
 	return prowInfo, nil
 }
 
-func getTimeStampFromProwJson(rawUrl string) (time.Time, error) {
-	jsonUrl, err := url.Parse(rawUrl)
+func getTimeStampFromProwJSON(rawURL string) (time.Time, error) {
+	jsonURL, err := url.Parse(rawURL)
 	if err != nil {
-		return time.Now(), fmt.Errorf("Failed to fetch prow JSOM at %s: %v", rawUrl, err)
+		return time.Now(), fmt.Errorf("Failed to fetch prow JSOM at %s: %v", rawURL, err)
 	}
 
 	var netClient = &http.Client{
 		Timeout: time.Second * 10,
 	}
-	resp, err := netClient.Get(jsonUrl.String())
+	resp, err := netClient.Get(jsonURL.String())
 	if err != nil {
-		return time.Now(), fmt.Errorf("Failed to fetch %s: %v", jsonUrl.String(), err)
+		return time.Now(), fmt.Errorf("Failed to fetch %s: %v", jsonURL.String(), err)
 	}
 	defer resp.Body.Close()
 
 	body, readErr := ioutil.ReadAll(resp.Body)
 	if readErr != nil {
-		return time.Now(), fmt.Errorf("Failed to read body at %s: %v", jsonUrl.String(), err)
+		return time.Now(), fmt.Errorf("Failed to read body at %s: %v", jsonURL.String(), err)
 	}
 
 	var prowInfo ProwJSON

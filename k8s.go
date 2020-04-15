@@ -332,7 +332,7 @@ func (s *ServerSettings) watchResourceQuota() {
 		// TODO: Make sure we watch correct resourceQuota
 		watcher, err := s.k8sClient.CoreV1().ResourceQuotas(s.namespace).Watch(metav1.ListOptions{})
 		if err != nil {
-			log.Println("Failed to setup ResourceQuota watcher: %v", err)
+			log.Printf("Failed to setup ResourceQuota watcher: %v", err)
 			continue
 		}
 		ch := watcher.ResultChan()

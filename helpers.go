@@ -51,8 +51,8 @@ const (
 	charset       = "abcdefghijklmnopqrstuvwxyz"
 	randLength    = 8
 	promTemplates = "prom-templates"
-	prowPrefix    = "https://prow.svc.ci.openshift.org/view"
-	gcsPrefix     = "https://gcsweb-ci.svc.ci.openshift.org"
+	prowPrefix    = "https://deck-ci.apps.ci.l2s4.p1.openshiftapps.com/view"
+	gcsPrefix     = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com"
 	storagePrefix = "https://storage.googleapis.com"
 	promTarPath   = "metrics/prometheus.tar"
 	extraPath     = "gather-extra"

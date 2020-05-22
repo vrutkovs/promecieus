@@ -164,13 +164,22 @@ func getMetricsTar(conn *websocket.Conn, url string) (ProwInfo, error) {
 func getTarURLFromProw(conn *websocket.Conn, baseURL string) (ProwInfo, error) {
 	prowInfo := ProwInfo{}
 
+	// Is it a direct prom tarball link?
+	if strings.HasSuffix(baseURL, promTarPath) {
+		prowInfo.MetricsURL = baseURL
+		// there is no way to find out the time via direct tarball link, use current time
+		prowInfo.Finished = time.Now()
+		prowInfo.Started = time.Now()
+		return prowInfo, nil
+	}
+
 	// Get a list of links on prow page
 	prowToplinks, err := getLinksFromURL(baseURL)
 	if err != nil {
 		return prowInfo, fmt.Errorf("Failed to find links at %s: %v", prowToplinks, err)
 	}
 	if len(prowToplinks) == 0 {
-		return prowInfo, fmt.Errorf("No links found at %s", prowToplinks)
+		return prowInfo, fmt.Errorf("No links found at %s", baseURL)
 	}
 	gcsTempURL := ""
 	for _, link := range prowToplinks {

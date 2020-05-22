@@ -152,7 +152,7 @@ func getMetricsTar(conn *websocket.Conn, url string) (ProwInfo, error) {
 	}
 	length, err := strconv.Atoi(contentLength)
 	if err != nil {
-		return prowInfo, fmt.Errorf("Failed to check archive at %s: %v", expectedMetricsURL, err)
+		return prowInfo, fmt.Errorf("Failed to check archive at %s: invalid content-length: %v", expectedMetricsURL, err)
 	}
 	if length == 0 {
 		return prowInfo, fmt.Errorf("Failed to check archive at %s: archive is empty", expectedMetricsURL)

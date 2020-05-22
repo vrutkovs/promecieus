@@ -117,13 +117,14 @@ func ensureMetricsURL(url string) (int, error) {
 }
 
 func getMetricsTar(conn *websocket.Conn, url string) (ProwInfo, error) {
+	sendWSMessage(conn, "status", fmt.Sprintf("Fetching %s", url))
 	// Ensure initial URL is valid
 	statusCode, err := ensureMetricsURL(url)
 	if err != nil || statusCode != http.StatusOK {
 		return ProwInfo{}, fmt.Errorf("Failed to fetch url %s: code %d, %s", url, statusCode, err)
 	}
 
-	prowInfo, err := getTarURLFromProw(url)
+	prowInfo, err := getTarURLFromProw(conn, url)
 	if err != nil {
 		return prowInfo, err
 	}
@@ -160,7 +161,7 @@ func getMetricsTar(conn *websocket.Conn, url string) (ProwInfo, error) {
 	return prowInfo, nil
 }
 
-func getTarURLFromProw(baseURL string) (ProwInfo, error) {
+func getTarURLFromProw(conn *websocket.Conn, baseURL string) (ProwInfo, error) {
 	prowInfo := ProwInfo{}
 
 	// Get a list of links on prow page
@@ -180,10 +181,10 @@ func getTarURLFromProw(baseURL string) (ProwInfo, error) {
 		}
 	}
 	if gcsTempURL == "" {
-		return prowInfo, fmt.Errorf("Failed to find e2e link in %v", prowToplinks)
+		return prowInfo, fmt.Errorf("Failed to find GCS link in %v", prowToplinks)
 	}
+	sendWSMessage(conn, "status", fmt.Sprintf("Found gcs link at %s", baseURL))
 
-	// Replace prow with gcs to get artifacts link
 	gcsURL, err := url.Parse(gcsTempURL)
 	if err != nil {
 		return prowInfo, fmt.Errorf("Failed to parse GCS URL %s: %v", gcsTempURL, err)
@@ -201,6 +202,8 @@ func getTarURLFromProw(baseURL string) (ProwInfo, error) {
 		return prowInfo, fmt.Errorf("Failed to fetch test finshed time: %v", err)
 	}
 	prowInfo.Finished = finishedTime
+
+	sendWSMessage(conn, "status", fmt.Sprintf("Found start/stop markers at %s", gcsURL))
 
 	// Check that 'artifacts' folder is present
 	gcsToplinks, err := getLinksFromURL(gcsURL.String())

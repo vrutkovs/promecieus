@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -27,12 +28,19 @@ const (
 	ciFetcherImage        = "registry.fedoraproject.org/fedora:31"
 )
 
-func inClusterLogin() (*k8s.Clientset, *routeClient.RouteV1Client, error) {
-	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
+func buildConfig(kubeconfig string) (*rest.Config, error) {
+	if kubeconfig != "" {
+		return clientcmd.BuildConfigFromFlags("", kubeconfig)
+	}
+	return rest.InClusterConfig()
+}
+
+func tryLogin(kubeconfigPath string) (*k8s.Clientset, *routeClient.RouteV1Client, error) {
+	config, err := buildConfig(kubeconfigPath)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	// Seed random
 	rand.Seed(time.Now().Unix())
 

@@ -1,13 +1,14 @@
 package main
 
 import (
+	"log"
+	"net/http"
+	"os"
+
 	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/jasonlvhit/gocron"
-	"log"
-	"net/http"
-	"os"
 )
 
 // health is k8s endpoint for liveness check
@@ -16,7 +17,9 @@ func health(c *gin.Context) {
 }
 
 func main() {
-	k8sC, routeC, err := inClusterLogin()
+	kubeConfigEnvVar := os.Getenv("KUBECONFIG")
+
+	k8sC, routeC, err := tryLogin(kubeConfigEnvVar)
 	if err != nil {
 		log.Println("Failed to login in cluster")
 		log.Println(err)

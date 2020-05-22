@@ -51,7 +51,7 @@ const (
 	charset       = "abcdefghijklmnopqrstuvwxyz"
 	randLength    = 8
 	promTemplates = "prom-templates"
-	prowPrefix    = "https://deck-ci.apps.ci.l2s4.p1.openshiftapps.com/view"
+	gcsLinkToken  = "gcsweb"
 	gcsPrefix     = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com"
 	storagePrefix = "https://storage.googleapis.com"
 	promTarPath   = "metrics/prometheus.tar"
@@ -163,7 +163,26 @@ func getMetricsTar(conn *websocket.Conn, url string) (ProwInfo, error) {
 func getTarURLFromProw(baseURL string) (ProwInfo, error) {
 	prowInfo := ProwInfo{}
 
-	gcsTempURL := strings.Replace(baseURL, prowPrefix, gcsPrefix, -1)
+	// Get a list of links on prow page
+	prowToplinks, err := getLinksFromURL(baseURL)
+	if err != nil {
+		return prowInfo, fmt.Errorf("Failed to find links at %s: %v", prowToplinks, err)
+	}
+	if len(prowToplinks) == 0 {
+		return prowInfo, fmt.Errorf("No links found at %s", prowToplinks)
+	}
+	gcsTempURL := ""
+	for _, link := range prowToplinks {
+		log.Printf("link: %s", link)
+		if strings.Contains(link, gcsLinkToken) {
+			gcsTempURL = link
+			break
+		}
+	}
+	if gcsTempURL == "" {
+		return prowInfo, fmt.Errorf("Failed to find e2e link in %v", prowToplinks)
+	}
+
 	// Replace prow with gcs to get artifacts link
 	gcsURL, err := url.Parse(gcsTempURL)
 	if err != nil {

@@ -105,7 +105,24 @@ func getLinksFromURL(url string) ([]string, error) {
 	}
 }
 
+func ensureMetricsURL(url string) (int, error) {
+	var netClient = &http.Client{
+		Timeout: time.Second * 10,
+	}
+	resp, err := netClient.Head(url)
+	if resp == nil {
+		return 0, err
+	}
+	return resp.StatusCode, err
+}
+
 func getMetricsTar(conn *websocket.Conn, url string) (ProwInfo, error) {
+	// Ensure initial URL is valid
+	statusCode, err := ensureMetricsURL(url)
+	if err != nil || statusCode != http.StatusOK {
+		return ProwInfo{}, fmt.Errorf("Failed to fetch url %s: code %d, %s", url, statusCode, err)
+	}
+
 	prowInfo, err := getTarURLFromProw(url)
 	if err != nil {
 		return prowInfo, err

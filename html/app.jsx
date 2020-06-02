@@ -305,7 +305,7 @@ class SearchForm extends React.Component {
   }
 
   componentDidMount() {
-    this.connect();
+    this.check();
   }
 
   render() {

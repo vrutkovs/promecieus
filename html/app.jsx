@@ -171,6 +171,7 @@ class SearchForm extends React.Component {
     this.addMessage = this.addMessage.bind(this);
     this.connect = this.connect.bind(this);
     this.check = this.check.bind(this);
+    this.search = this.search.bind(this);
   }
 
   handleSearchInput(searchInput) {

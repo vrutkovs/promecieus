@@ -216,6 +216,7 @@ class SearchForm extends React.Component {
   }
 
   addMessage(message) {
+    console.log("Sending " + JSON.stringify(message));
     this.setState(state => ({ messages: [...state.messages, message] }))
     if (message.action === "app-label") {
       this.setState(state => ({appName: message.message}))
@@ -298,7 +299,7 @@ class SearchForm extends React.Component {
     };
 
     ws.onmessage = evt => {
-      console.log(evt.data);
+      console.log("Received " + evt.data);
       const message = JSON.parse(evt.data);
       this.addMessage(message)
     }

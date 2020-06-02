@@ -171,6 +171,7 @@ class SearchForm extends React.Component {
     this.addMessage = this.addMessage.bind(this);
     this.connect = this.connect.bind(this);
     this.check = this.check.bind(this);
+    this.search = this.search.bind(this);
   }
 
   handleSearchInput(searchInput) {
@@ -183,11 +184,11 @@ class SearchForm extends React.Component {
       return;
     }
 
-    search(this.state.searchInput);
+    this.search(this.state.searchInput);
   }
 
   search(input) {
-    handleSearchInput(input);
+    this.handleSearchInput(input);
     try {
       this.state.messages = [];
       this.state.ws.send(JSON.stringify({
@@ -321,7 +322,7 @@ class SearchForm extends React.Component {
         let searchInput = params.get('search');
         if (searchInput && searchInput != this.state.querySearch) {
           this.state.querySearch = searchInput;
-          search(searchInput);
+          this.search(searchInput);
         }
       }
 

@@ -188,6 +188,7 @@ class SearchForm extends React.Component {
   }
 
   search(input) {
+    this.check()
     this.handleSearchInput(input);
     try {
       this.state.messages = [];

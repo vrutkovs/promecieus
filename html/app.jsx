@@ -169,6 +169,7 @@ class SearchForm extends React.Component {
     this.handleSearchSubmit = this.handleSearchSubmit.bind(this);
     this.handleDeleteApp = this.handleDeleteApp.bind(this);
     this.addMessage = this.addMessage.bind(this);
+    this.sendWSMessage = this.sendWSMessage.bind(this);
     this.connect = this.connect.bind(this);
     this.check = this.check.bind(this);
     this.search = this.search.bind(this);
@@ -187,12 +188,25 @@ class SearchForm extends React.Component {
     this.search(this.state.searchInput);
   }
 
+  sendWSMessage(message) {
+    // add messages to queue if connection is not ready
+    if (!this.state.ws || this.state.ws.readyState != WebSocket.OPEN) {
+      if (this.state.ws) {
+        console.log("ws.readyState " + this.state.ws.readyState);
+      }
+      if (!this.ws_msgs) this.ws_msgs = []
+      console.log("Added message " + message + " to queue");
+      this.ws_msgs.push(message)
+    } else {
+      console.log("Sending message " + message);
+      this.state.ws.send(message)
+    }
+  }
+
   search(input) {
-    this.check()
-    this.handleSearchInput(input);
     try {
       this.state.messages = [];
-      this.state.ws.send(JSON.stringify({
+      this.sendWSMessage(JSON.stringify({
         'action': 'new',
         'message': input,
       }));
@@ -203,7 +217,7 @@ class SearchForm extends React.Component {
 
   handleDeleteApp(event) {
     try {
-      this.state.ws.send(JSON.stringify({
+      this.sendWSMessage(JSON.stringify({
         'action': 'delete',
         'message': this.state.appName
       }))
@@ -216,7 +230,6 @@ class SearchForm extends React.Component {
   }
 
   addMessage(message) {
-    console.log("Sending " + JSON.stringify(message));
     this.setState(state => ({ messages: [...state.messages, message] }))
     if (message.action === "app-label") {
       this.setState(state => ({appName: message.message}))
@@ -245,7 +258,7 @@ class SearchForm extends React.Component {
     };
 
   connect () {
-    var loc = window.location, new_uri;
+    var loc = window.location;
     var ws_uri;
     if (loc.protocol === "https:") {
         ws_uri = "wss:";
@@ -261,16 +274,15 @@ class SearchForm extends React.Component {
     // websocket onopen event listener
     ws.onopen = () => {
       console.log("websocket connected");
-
-      this.setState({ ws: ws });
-
-      this.state.ws.send(JSON.stringify({
-        'action': 'connect',
-        'message': ''
-      }))
+      that.setState({ ws: ws });
 
       that.timeout = 250; // reset timer to 250 on open of websocket connection
       clearTimeout(connectInterval); // clear Interval on on open of websocket connection
+
+      // Send messages if there's a queue
+      while (that.ws_msgs && that.ws_msgs.length > 0) {
+        ws.send(that.ws_msgs.pop())
+      }
     };
 
     // websocket onclose event listener
@@ -303,10 +315,22 @@ class SearchForm extends React.Component {
       const message = JSON.parse(evt.data);
       this.addMessage(message)
     }
+
+    this.setState({ ws: ws });
   }
 
   componentDidMount() {
     this.check();
+    this.timeout = 0;
+    if (!this.state.searchInput) {
+      let params = (new URL(window.location)).searchParams;
+      let searchInput = params.get('search');
+      if (searchInput && searchInput != this.state.querySearch) {
+        this.state.querySearch = searchInput;
+        this.handleSearchInput(searchInput);
+        this.search(searchInput);
+      }
+    }
   }
 
   render() {
@@ -319,15 +343,6 @@ class SearchForm extends React.Component {
     } else {
       messages = [];
       searchClass = 'search-center';
-      if (!this.state.searchInput) {
-        let params = (new URL(window.location)).searchParams;
-        let searchInput = params.get('search');
-        if (searchInput && searchInput != this.state.querySearch) {
-          this.state.querySearch = searchInput;
-          this.search(searchInput);
-        }
-      }
-
     }
 
     return (

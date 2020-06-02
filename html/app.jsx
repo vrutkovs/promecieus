@@ -154,6 +154,7 @@ class SearchForm extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
+      querySearch: '',
       searchInput: '',
       messages: [],
       appName: null,
@@ -182,14 +183,19 @@ class SearchForm extends React.Component {
       return;
     }
 
+    search(this.state.searchInput);
+  }
+
+  search(input) {
+    handleSearchInput(input);
     try {
-      this.state.messages = []
+      this.state.messages = [];
       this.state.ws.send(JSON.stringify({
         'action': 'new',
-        'message': this.state.searchInput
-      }))
+        'message': input,
+      }));
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
   }
 
@@ -304,13 +310,23 @@ class SearchForm extends React.Component {
     let messages;
     let searchClass;
     if(this.state.appName != null) {
-        messages =
-          <Status messages={this.state.messages} />
-        searchClass = null
+      messages =
+        <Status messages={this.state.messages} />
+      searchClass = null;
     } else {
-        messages = []
-        searchClass = 'search-center'
+      messages = [];
+      searchClass = 'search-center';
+      if (!this.state.searchInput) {
+        let params = (new URL(window.location)).searchParams;
+        let searchInput = params.get('search');
+        if (searchInput && searchInput != this.state.querySearch) {
+          this.state.querySearch = searchInput;
+          search(searchInput);
+        }
+      }
+
     }
+
     return (
       <div className={searchClass}>
         <h3>PromeCIeus</h3>

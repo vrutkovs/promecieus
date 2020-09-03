@@ -93,7 +93,7 @@ func (s *ServerSettings) launchPromApp(appLabel string, metricsTar string) (stri
 							Command: []string{
 								"/bin/bash",
 								"-c",
-								"set -uxo pipefail && umask 0000 && curl -sL ${PROMTAR} | tar xvz -m",
+								"set -uxo pipefail && umask 0000 && curl -sL ${PROMTAR} | tar xvz -m --no-overwrite-dir",
 							},
 							WorkingDir: "/prometheus/",
 							Env: []corev1.EnvVar{

@@ -1,6 +1,7 @@
 package promecieus
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -59,9 +60,10 @@ func main() {
 		Grafana:     &grafana,
 	}
 	if server.GetResourceQuota() != nil {
-		panic("Failed to read initial resource quota")
+		fmt.Print("Failed to read initial resource quota")
+	} else {
+		go server.WatchResourceQuota()
 	}
-	go server.WatchResourceQuota()
 
 	r := gin.New()
 

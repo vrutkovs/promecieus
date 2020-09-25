@@ -6,10 +6,6 @@ RUN go mod vendor && go build -o ./promecieus ./cmd/promecieus
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.2
 COPY --from=builder /go/src/github.com/vrutkovs/promecieus/promecieus /bin/promecieus
-COPY --from=builder /go/src/github.com/vrutkovs/promecieus/html /bin/html
-RUN mkdir /output && chown 1000:1000 /output
-USER 1000:1000
-ENV PATH /bin
-ENV HOME /output
-WORKDIR /output
+COPY --from=builder /go/src/github.com/vrutkovs/promecieus/html /srv/html
+WORKDIR /srv
 ENTRYPOINT ["/bin/promecieus"]

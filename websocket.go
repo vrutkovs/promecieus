@@ -1,10 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -92,6 +97,11 @@ func (s *ServerSettings) removeProm(conn *websocket.Conn, appName string) {
 		sendWSMessage(conn, "failure", fmt.Sprintf("%s\n%s", output, err.Error()))
 		return
 	}
+	ds_id := s.datasources[appName]
+	if err := s.removeDataSource(ds_id); err != nil {
+		sendWSMessage(conn, "failure", err.Error())
+	}
+	delete(s.datasources, appName)
 	sendWSMessage(conn, "done", "Prometheus instance removed")
 }
 
@@ -130,5 +140,102 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, rawURL string
 		sendWSMessage(conn, "failure", err.Error())
 		return
 	}
+
+	ds_id, err := s.addDataSource(appLabel, promRoute)
+	if err != nil {
+		sendWSMessage(conn, "failure", err.Error())
+	}
+	s.datasources[appLabel] = ds_id
+	sendWSMessage(conn, "status", fmt.Sprintf("Added %s datasource at %s", appLabel, s.grafana.URL))
 	sendWSMessage(conn, "done", "Pod is ready")
+}
+
+type GrafanaDatasource struct {
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	URL       string `json:"url"`
+	Access    string `json:"access"`
+	BasicAuth bool   `json:"basicAuth"`
+}
+
+type GrafanaDatasourceResponse struct {
+	DataSource struct {
+		ID int `json:"id"`
+	} `json:"datasource"`
+}
+
+func (s *ServerSettings) grafanaRequest(method, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", s.grafana.Token))
+	req.Header.Set("Cookie", s.grafana.Cookie)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	return req, nil
+}
+
+func (s *ServerSettings) addDataSource(appLabel, promRoute string) (int, error) {
+	ds := &GrafanaDatasource{
+		Name:      appLabel,
+		URL:       promRoute,
+		Type:      "prometheus",
+		Access:    "proxy",
+		BasicAuth: false,
+	}
+	data, err := json.Marshal(ds)
+	if err != nil {
+		return 0, nil
+	}
+	var netClient = &http.Client{
+		Timeout: time.Second * 10,
+	}
+	apiUrl := fmt.Sprintf("%s/api/datasources", s.grafana.URL)
+	req, err := s.grafanaRequest("POST", apiUrl, bytes.NewBuffer(data))
+	if err != nil {
+		return 0, fmt.Errorf("Failed to construct POST request to %s: %v", apiUrl, err)
+	}
+	resp, err := netClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("Failed to perform request %s: %v", apiUrl, err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return 0, fmt.Errorf("Failed to read body: %v", err)
+	}
+	dsResponse := &GrafanaDatasourceResponse{}
+	if err := json.Unmarshal(body, dsResponse); err != nil {
+		return 0, fmt.Errorf("Failed to unmarshal response %s : %v", body, err)
+	}
+	return dsResponse.DataSource.ID, nil
+}
+
+func (s *ServerSettings) removeDataSource(id int) error {
+	var netClient = &http.Client{
+		Timeout: time.Second * 10,
+	}
+	apiUrl := fmt.Sprintf("%s/api/datasources/%d", s.grafana.URL, id)
+	req, err := s.grafanaRequest("DELETE", apiUrl, nil)
+	if err != nil {
+		return fmt.Errorf("Failed to construct DELETE request to %s: %v", apiUrl, err)
+	}
+	resp, err := netClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("Failed to perform request %s: %v", apiUrl, err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("Failed to read body: %v", err)
+	}
+	dsResponse := &GrafanaDatasourceResponse{}
+	if err := json.Unmarshal(body, dsResponse); err != nil {
+		return fmt.Errorf("Failed to unmarshal response %s : %v", body, err)
+	}
+	return nil
+
 }

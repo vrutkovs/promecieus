@@ -1,4 +1,4 @@
-package main
+package promecieus
 
 import (
 	"fmt"
@@ -35,7 +35,8 @@ func buildConfig(kubeconfig string) (*rest.Config, error) {
 	return rest.InClusterConfig()
 }
 
-func tryLogin(kubeconfigPath string) (*k8s.Clientset, *routeClient.RouteV1Client, error) {
+// TryLogin returns k8s clientset and route client
+func TryLogin(kubeconfigPath string) (*k8s.Clientset, *routeClient.RouteV1Client, error) {
 	config, err := buildConfig(kubeconfigPath)
 	if err != nil {
 		return nil, nil, err
@@ -161,7 +162,7 @@ func (s *ServerSettings) launchPromApp(appLabel string, metricsTar string) (stri
 			},
 		},
 	}
-	_, err := s.k8sClient.AppsV1().Deployments(s.namespace).Create(deployment)
+	_, err := s.K8sClient.AppsV1().Deployments(s.Namespace).Create(deployment)
 	if err != nil {
 		return "", fmt.Errorf("Failed to create new deployment: %s", err.Error())
 	}
@@ -186,7 +187,7 @@ func (s *ServerSettings) launchPromApp(appLabel string, metricsTar string) (stri
 			},
 		},
 	}
-	_, err = s.k8sClient.CoreV1().Services(s.namespace).Create(service)
+	_, err = s.K8sClient.CoreV1().Services(s.Namespace).Create(service)
 	if err != nil {
 		return "", fmt.Errorf("Failed to create new service: %s", err.Error())
 	}
@@ -212,7 +213,7 @@ func (s *ServerSettings) launchPromApp(appLabel string, metricsTar string) (stri
 			},
 		},
 	}
-	route, err := s.routeClient.Routes(s.namespace).Create(promRoute)
+	route, err := s.RouteClient.Routes(s.Namespace).Create(promRoute)
 	if err != nil {
 		return "", fmt.Errorf("Failed to create route: %v", err)
 	}
@@ -224,7 +225,7 @@ func (s *ServerSettings) waitForDeploymentReady(appLabel string) error {
 	depName := fmt.Sprintf("%s-prom", appLabel)
 
 	return wait.PollImmediate(time.Second, deploymentRolloutTime, func() (bool, error) {
-		dep, err := s.k8sClient.AppsV1().Deployments(s.namespace).Get(depName, metav1.GetOptions{})
+		dep, err := s.K8sClient.AppsV1().Deployments(s.Namespace).Get(depName, metav1.GetOptions{})
 		if err != nil {
 			return true, fmt.Errorf("Failed to fetch deployment: %v", err)
 		}
@@ -237,12 +238,12 @@ func (s *ServerSettings) deletePods(appLabel string) (string, error) {
 
 	// Delete service
 	listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", appLabel)}
-	svcList, err := s.k8sClient.CoreV1().Services(s.namespace).List(listOpts)
+	svcList, err := s.K8sClient.CoreV1().Services(s.Namespace).List(listOpts)
 	if err != nil || svcList.Items == nil {
 		return "", fmt.Errorf("Failed to find services: %v", err)
 	}
 	for _, svc := range svcList.Items {
-		err := s.k8sClient.CoreV1().Services(s.namespace).Delete(svc.Name, &metav1.DeleteOptions{})
+		err := s.K8sClient.CoreV1().Services(s.Namespace).Delete(svc.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return strings.Join(actionLog, "\n"),
 				fmt.Errorf("Error removing service %s: %v", svc.Name, err)
@@ -251,12 +252,12 @@ func (s *ServerSettings) deletePods(appLabel string) (string, error) {
 	}
 
 	// Delete deployment
-	depList, err := s.k8sClient.AppsV1().Deployments(s.namespace).List(listOpts)
+	depList, err := s.K8sClient.AppsV1().Deployments(s.Namespace).List(listOpts)
 	if err != nil || depList.Items == nil {
 		return "", fmt.Errorf("Failed to find deployments: %v", err)
 	}
 	for _, dep := range depList.Items {
-		err := s.k8sClient.AppsV1().Deployments(s.namespace).Delete(dep.Name, &metav1.DeleteOptions{})
+		err := s.K8sClient.AppsV1().Deployments(s.Namespace).Delete(dep.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return strings.Join(actionLog, "\n"),
 				fmt.Errorf("Error removing deployment %s: %v", dep.Name, err)
@@ -265,12 +266,12 @@ func (s *ServerSettings) deletePods(appLabel string) (string, error) {
 	}
 
 	// Delete configmap
-	cmList, err := s.k8sClient.CoreV1().ConfigMaps(s.namespace).List(listOpts)
+	cmList, err := s.K8sClient.CoreV1().ConfigMaps(s.Namespace).List(listOpts)
 	if err != nil || cmList.Items == nil {
 		return "", fmt.Errorf("Failed to find config maps: %v", err)
 	}
 	for _, cm := range cmList.Items {
-		err := s.k8sClient.CoreV1().ConfigMaps(s.namespace).Delete(cm.Name, &metav1.DeleteOptions{})
+		err := s.K8sClient.CoreV1().ConfigMaps(s.Namespace).Delete(cm.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return strings.Join(actionLog, "\n"),
 				fmt.Errorf("Error removing config map %s: %v", cm.Name, err)
@@ -279,12 +280,12 @@ func (s *ServerSettings) deletePods(appLabel string) (string, error) {
 	}
 
 	// Delete route
-	routeList, err := s.routeClient.Routes(s.namespace).List(listOpts)
+	routeList, err := s.RouteClient.Routes(s.Namespace).List(listOpts)
 	if err != nil || routeList.Items == nil {
 		return "", fmt.Errorf("Failed to find routes: %v", err)
 	}
 	for _, route := range routeList.Items {
-		err := s.routeClient.Routes(s.namespace).Delete(route.Name, &metav1.DeleteOptions{})
+		err := s.RouteClient.Routes(s.Namespace).Delete(route.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return strings.Join(actionLog, "\n"),
 				fmt.Errorf("Error removing route %s: %v", route.Name, err)
@@ -295,10 +296,11 @@ func (s *ServerSettings) deletePods(appLabel string) (string, error) {
 	return strings.Join(actionLog, "\n"), nil
 }
 
-func (s *ServerSettings) cleanupOldDeployements() {
+// CleanupOldDeployements periodically removes old deployments
+func (s *ServerSettings) CleanupOldDeployements() {
 	log.Println("Cleaning up old deployments")
 	// List all deployments, find those which are older than n hours and call 'deletePods'
-	depsList, err := s.k8sClient.AppsV1().Deployments(s.namespace).List(metav1.ListOptions{})
+	depsList, err := s.K8sClient.AppsV1().Deployments(s.Namespace).List(metav1.ListOptions{})
 	if err != nil || depsList.Items == nil {
 		return
 	}
@@ -322,12 +324,13 @@ func (s *ServerSettings) cleanupOldDeployements() {
 	}
 }
 
-func (s *ServerSettings) getResourceQuota() error {
-	rquota, err := s.k8sClient.CoreV1().ResourceQuotas(s.namespace).Get(s.rquotaName, metav1.GetOptions{})
+// GetResourceQuota updates current resource quota setting
+func (s *ServerSettings) GetResourceQuota() error {
+	rquota, err := s.K8sClient.CoreV1().ResourceQuotas(s.Namespace).Get(s.RQuotaName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("Failed to get ResourceQuota: %v", err)
 	}
-	s.rqStatus = &RQuotaStatus{
+	s.RQStatus = &RQuotaStatus{
 		Used: rquota.Status.Used.Pods().Value(),
 		Hard: rquota.Status.Hard.Pods().Value(),
 	}
@@ -335,10 +338,11 @@ func (s *ServerSettings) getResourceQuota() error {
 	return nil
 }
 
-func (s *ServerSettings) watchResourceQuota() {
+// WatchResourceQuota passes RQ updates from k8s to UI
+func (s *ServerSettings) WatchResourceQuota() {
 	for {
 		// TODO: Make sure we watch correct resourceQuota
-		watcher, err := s.k8sClient.CoreV1().ResourceQuotas(s.namespace).Watch(metav1.ListOptions{})
+		watcher, err := s.K8sClient.CoreV1().ResourceQuotas(s.Namespace).Watch(metav1.ListOptions{})
 		if err != nil {
 			log.Printf("Failed to setup ResourceQuota watcher: %v", err)
 			continue
@@ -346,15 +350,15 @@ func (s *ServerSettings) watchResourceQuota() {
 		ch := watcher.ResultChan()
 		for event := range ch {
 			rq, ok := event.Object.(*corev1.ResourceQuota)
-			if !ok || rq.Name != s.rquotaName {
+			if !ok || rq.Name != s.RQuotaName {
 				log.Printf("Skipping rq update: %v, %s", ok, rq.Name)
 				continue
 			}
-			s.rqStatus = &RQuotaStatus{
+			s.RQStatus = &RQuotaStatus{
 				Used: rq.Status.Used.Pods().Value(),
 				Hard: rq.Status.Hard.Pods().Value(),
 			}
-			log.Printf("ResourceQuota update: %v", s.rqStatus)
+			log.Printf("ResourceQuota update: %v", s.RQStatus)
 			s.sendResourceQuotaUpdate()
 		}
 	}

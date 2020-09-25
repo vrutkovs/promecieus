@@ -1,4 +1,4 @@
-package main
+package promecieus
 
 import (
 	"encoding/json"
@@ -14,47 +14,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"golang.org/x/net/html"
-
-	routeClient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
-	k8s "k8s.io/client-go/kubernetes"
 )
-
-// GrafanaSettings stores grafana config
-type GrafanaSettings struct {
-	URL    string `json:"url"`
-	Token  string `json:"token"`
-	Cookie string `json:"cookie"`
-}
-
-// RQuotaStatus stores ResourceQuota info
-type RQuotaStatus struct {
-	Used int64 `json:"used"`
-	Hard int64 `json:"hard"`
-}
-
-// ServerSettings stores info about the server
-type ServerSettings struct {
-	k8sClient   *k8s.Clientset
-	routeClient *routeClient.RouteV1Client
-	namespace   string
-	rquotaName  string
-	rqStatus    *RQuotaStatus
-	conns       map[string]*websocket.Conn
-	datasources map[string]int
-	grafana     *GrafanaSettings
-}
-
-// ProwJSON stores test start / finished timestamp
-type ProwJSON struct {
-	Timestamp int `json:"timestamp"`
-}
-
-// ProwInfo stores all links and data collected via scanning for metrics
-type ProwInfo struct {
-	Started    time.Time
-	Finished   time.Time
-	MetricsURL string
-}
 
 const (
 	charset       = "abcdefghijklmnopqrstuvwxyz"

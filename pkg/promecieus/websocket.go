@@ -1,4 +1,4 @@
-package main
+package promecieus
 
 import (
 	"bytes"
@@ -40,7 +40,8 @@ func sendWSMessage(conn *websocket.Conn, action string, message string) {
 	}
 }
 
-func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
+// HandleStatusViaWS reads websocket events and runs actions
+func (s *ServerSettings) HandleStatusViaWS(c *gin.Context) {
 	conn, err := wsupgrader.Upgrade(c.Writer, c.Request, nil)
 
 	if err != nil {
@@ -53,7 +54,7 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 		log.Printf("Got ws message: %s", msg)
 		if err != nil {
 			if !websocket.IsCloseError(err, 1001, 1006) {
-				delete(s.conns, conn.RemoteAddr().String())
+				delete(s.Conns, conn.RemoteAddr().String())
 				log.Printf("Error reading message: %+v", err)
 			}
 			break
@@ -71,7 +72,7 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 		log.Printf("WS message: %+v", m)
 		switch m.Action {
 		case "connect":
-			s.conns[conn.RemoteAddr().String()] = conn
+			s.Conns[conn.RemoteAddr().String()] = conn
 			go s.sendResourceQuotaUpdate()
 		case "new":
 			go s.createNewPrometheus(conn, m.Message)
@@ -82,11 +83,11 @@ func (s *ServerSettings) handleStatusViaWS(c *gin.Context) {
 }
 
 func (s *ServerSettings) sendResourceQuotaUpdate() {
-	rqsJSON, err := json.Marshal(s.rqStatus)
+	rqsJSON, err := json.Marshal(s.RQStatus)
 	if err != nil {
 		log.Fatalf("Can't serialize %s", err)
 	}
-	for _, conn := range s.conns {
+	for _, conn := range s.Conns {
 		sendWSMessage(conn, "rquota", string(rqsJSON))
 	}
 }
@@ -97,11 +98,11 @@ func (s *ServerSettings) removeProm(conn *websocket.Conn, appName string) {
 		sendWSMessage(conn, "failure", fmt.Sprintf("%s\n%s", output, err.Error()))
 		return
 	}
-	ds_id := s.datasources[appName]
-	if err := s.removeDataSource(ds_id); err != nil {
+	dsID := s.Datasources[appName]
+	if err := s.removeDataSource(dsID); err != nil {
 		sendWSMessage(conn, "failure", err.Error())
 	}
-	delete(s.datasources, appName)
+	delete(s.Datasources, appName)
 	sendWSMessage(conn, "done", "Prometheus instance removed")
 }
 
@@ -141,15 +142,16 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, rawURL string
 		return
 	}
 
-	ds_id, err := s.addDataSource(appLabel, promRoute)
+	dsID, err := s.addDataSource(appLabel, promRoute)
 	if err != nil {
 		sendWSMessage(conn, "failure", err.Error())
 	}
-	s.datasources[appLabel] = ds_id
-	sendWSMessage(conn, "status", fmt.Sprintf("Added %s datasource at %s", appLabel, s.grafana.URL))
+	s.Datasources[appLabel] = dsID
+	sendWSMessage(conn, "status", fmt.Sprintf("Added %s datasource at %s", appLabel, s.Grafana.URL))
 	sendWSMessage(conn, "done", "Pod is ready")
 }
 
+// GrafanaDatasource represents a datasource to be created
 type GrafanaDatasource struct {
 	Name      string `json:"name"`
 	Type      string `json:"type"`
@@ -158,6 +160,7 @@ type GrafanaDatasource struct {
 	BasicAuth bool   `json:"basicAuth"`
 }
 
+// GrafanaDatasourceResponse represents response from grafana
 type GrafanaDatasourceResponse struct {
 	DataSource struct {
 		ID int `json:"id"`
@@ -169,8 +172,8 @@ func (s *ServerSettings) grafanaRequest(method, url string, body io.Reader) (*ht
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", s.grafana.Token))
-	req.Header.Set("Cookie", s.grafana.Cookie)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", s.Grafana.Token))
+	req.Header.Set("Cookie", s.Grafana.Cookie)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	return req, nil
@@ -191,14 +194,14 @@ func (s *ServerSettings) addDataSource(appLabel, promRoute string) (int, error) 
 	var netClient = &http.Client{
 		Timeout: time.Second * 10,
 	}
-	apiUrl := fmt.Sprintf("%s/api/datasources", s.grafana.URL)
-	req, err := s.grafanaRequest("POST", apiUrl, bytes.NewBuffer(data))
+	apiURL := fmt.Sprintf("%s/api/datasources", s.Grafana.URL)
+	req, err := s.grafanaRequest("POST", apiURL, bytes.NewBuffer(data))
 	if err != nil {
-		return 0, fmt.Errorf("Failed to construct POST request to %s: %v", apiUrl, err)
+		return 0, fmt.Errorf("Failed to construct POST request to %s: %v", apiURL, err)
 	}
 	resp, err := netClient.Do(req)
 	if err != nil {
-		return 0, fmt.Errorf("Failed to perform request %s: %v", apiUrl, err)
+		return 0, fmt.Errorf("Failed to perform request %s: %v", apiURL, err)
 	}
 	defer resp.Body.Close()
 
@@ -217,14 +220,14 @@ func (s *ServerSettings) removeDataSource(id int) error {
 	var netClient = &http.Client{
 		Timeout: time.Second * 10,
 	}
-	apiUrl := fmt.Sprintf("%s/api/datasources/%d", s.grafana.URL, id)
-	req, err := s.grafanaRequest("DELETE", apiUrl, nil)
+	apiURL := fmt.Sprintf("%s/api/datasources/%d", s.Grafana.URL, id)
+	req, err := s.grafanaRequest("DELETE", apiURL, nil)
 	if err != nil {
-		return fmt.Errorf("Failed to construct DELETE request to %s: %v", apiUrl, err)
+		return fmt.Errorf("Failed to construct DELETE request to %s: %v", apiURL, err)
 	}
 	resp, err := netClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("Failed to perform request %s: %v", apiUrl, err)
+		return fmt.Errorf("Failed to perform request %s: %v", apiURL, err)
 	}
 	defer resp.Body.Close()
 

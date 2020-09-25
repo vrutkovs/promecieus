@@ -1,4 +1,4 @@
-package main
+package promecieus
 
 import (
 	"log"
@@ -9,6 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/jasonlvhit/gocron"
+
+	"github.com/vrutkovs/promecieus/pkg/promecieus"
 )
 
 // health is k8s endpoint for liveness check
@@ -19,7 +21,7 @@ func health(c *gin.Context) {
 func main() {
 	kubeConfigEnvVar := os.Getenv("KUBECONFIG")
 
-	k8sC, routeC, err := tryLogin(kubeConfigEnvVar)
+	k8sC, routeC, err := promecieus.TryLogin(kubeConfigEnvVar)
 	if err != nil {
 		log.Println("Failed to login in cluster")
 		log.Println(err)
@@ -38,28 +40,28 @@ func main() {
 		rquotaName = envVarRquotaName
 	}
 
-	rqStatus := RQuotaStatus{}
+	rqStatus := promecieus.RQuotaStatus{}
 
-	grafana := GrafanaSettings{
+	grafana := promecieus.GrafanaSettings{
 		URL:    os.Getenv("GRAFANA_URL"),
 		Token:  os.Getenv("GRAFANA_TOKEN"),
 		Cookie: os.Getenv("GRAFANA_COOKIE"),
 	}
 
-	server := &ServerSettings{
-		k8sClient:   k8sC,
-		routeClient: routeC,
-		namespace:   namespace,
-		rquotaName:  rquotaName,
-		rqStatus:    &rqStatus,
-		conns:       make(map[string]*websocket.Conn),
-		datasources: make(map[string]int),
-		grafana:     &grafana,
+	server := &promecieus.ServerSettings{
+		K8sClient:   k8sC,
+		RouteClient: routeC,
+		Namespace:   namespace,
+		RQuotaName:  rquotaName,
+		RQStatus:    &rqStatus,
+		Conns:       make(map[string]*websocket.Conn),
+		Datasources: make(map[string]int),
+		Grafana:     &grafana,
 	}
-	if server.getResourceQuota() != nil {
+	if server.GetResourceQuota() != nil {
 		panic("Failed to read initial resource quota")
 	}
-	go server.watchResourceQuota()
+	go server.WatchResourceQuota()
 
 	r := gin.New()
 
@@ -72,10 +74,10 @@ func main() {
 		gin.Recovery(),
 	)
 	r.GET("/health", health)
-	r.GET("/ws/status", server.handleStatusViaWS)
+	r.GET("/ws/status", server.HandleStatusViaWS)
 
 	go func() {
-		gocron.Every(2).Minutes().Do(server.cleanupOldDeployements)
+		gocron.Every(2).Minutes().Do(server.CleanupOldDeployements)
 		<-gocron.Start()
 	}()
 

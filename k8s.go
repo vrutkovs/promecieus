@@ -327,7 +327,7 @@ func (s *ServerSettings) getResourceQuota() error {
 	if err != nil {
 		return fmt.Errorf("Failed to get ResourceQuota: %v", err)
 	}
-	s.rqStatus = RQuotaStatus{
+	s.rqStatus = &RQuotaStatus{
 		Used: rquota.Status.Used.Pods().Value(),
 		Hard: rquota.Status.Hard.Pods().Value(),
 	}
@@ -350,7 +350,7 @@ func (s *ServerSettings) watchResourceQuota() {
 				log.Printf("Skipping rq update: %v, %s", ok, rq.Name)
 				continue
 			}
-			s.rqStatus = RQuotaStatus{
+			s.rqStatus = &RQuotaStatus{
 				Used: rq.Status.Used.Pods().Value(),
 				Hard: rq.Status.Hard.Pods().Value(),
 			}

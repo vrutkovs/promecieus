@@ -40,13 +40,21 @@ func main() {
 
 	rqStatus := RQuotaStatus{}
 
+	grafana := GrafanaSettings{
+		URL:    os.Getenv("GRAFANA_URL"),
+		Token:  os.Getenv("GRAFANA_TOKEN"),
+		Cookie: os.Getenv("GRAFANA_COOKIE"),
+	}
+
 	server := &ServerSettings{
 		k8sClient:   k8sC,
 		routeClient: routeC,
 		namespace:   namespace,
 		rquotaName:  rquotaName,
-		rqStatus:    rqStatus,
+		rqStatus:    &rqStatus,
 		conns:       make(map[string]*websocket.Conn),
+		datasources: make(map[string]int),
+		grafana:     &grafana,
 	}
 	if server.getResourceQuota() != nil {
 		panic("Failed to read initial resource quota")

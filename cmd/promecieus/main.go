@@ -1,4 +1,4 @@
-package promecieus
+package main
 
 import (
 	"fmt"

@@ -23,7 +23,7 @@ const (
 	gcsLinkToken  = "gcsweb"
 	gcsPrefix     = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com"
 	storagePrefix = "https://storage.googleapis.com"
-	promTarPath   = "metrics/prometheus.tar"
+	promTarPath   = "artifacts/metrics/prometheus.tar"
 	extraPath     = "gather-extra"
 	e2ePrefix     = "e2e"
 )

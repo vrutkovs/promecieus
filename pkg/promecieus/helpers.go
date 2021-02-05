@@ -23,7 +23,8 @@ const (
 	gcsLinkToken  = "gcsweb"
 	gcsPrefix     = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com"
 	storagePrefix = "https://storage.googleapis.com"
-	promTarPath   = "artifacts/metrics/prometheus.tar"
+	artifactsPath = "artifacts"
+	promTarPath   = "metrics/prometheus.tar"
 	extraPath     = "gather-extra"
 	e2ePrefix     = "e2e"
 )
@@ -236,7 +237,9 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL string) (ProwInfo, error) {
 		return prowInfo, fmt.Errorf("Failed to parse e2e link %s: %v", tmpE2eURL, err)
 	}
 
-	// Support new-style jobs
+	// Support new-style jobs - look for gather-extra
+	var gatherExtraUrl *url.URL
+
 	e2eToplinks, err := getLinksFromURL(e2eURL.String())
 	if err != nil {
 		return prowInfo, fmt.Errorf("Failed to fetch artifacts link at %s: %v", e2eURL, err)
@@ -253,13 +256,42 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL string) (ProwInfo, error) {
 		}
 		log.Printf("lastPathSection: %s", lastPathSegment)
 		if lastPathSegment == extraPath {
-			tmpE2eURL = gcsPrefix + link
-			e2eURL, err = url.Parse(tmpE2eURL)
+			tmpMetricsURL := gcsPrefix + link
+			gatherExtraUrl, err = url.Parse(tmpMetricsURL)
 			if err != nil {
 				return prowInfo, fmt.Errorf("Failed to parse e2e link %s: %v", tmpE2eURL, err)
 			}
 			break
 		}
+	}
+
+	if gatherExtraUrl != nil {
+		// New-style jobs may not have metrics available
+		e2eToplinks, err = getLinksFromURL(gatherExtraUrl.String())
+		if err != nil {
+			return prowInfo, fmt.Errorf("Failed to fetch gather-extra link at %s: %v", e2eURL, err)
+		}
+		if len(e2eToplinks) == 0 {
+			return prowInfo, fmt.Errorf("No top links at %s found", e2eURL)
+		}
+		for _, link := range e2eToplinks {
+			log.Printf("link: %s", link)
+			linkSplitBySlash := strings.Split(link, "/")
+			lastPathSegment := linkSplitBySlash[len(linkSplitBySlash)-1]
+			if len(lastPathSegment) == 0 {
+				lastPathSegment = linkSplitBySlash[len(linkSplitBySlash)-2]
+			}
+			log.Printf("lastPathSection: %s", lastPathSegment)
+			if lastPathSegment == artifactsPath {
+				tmpGatherExtraURL := gcsPrefix + link
+				gatherExtraUrl, err = url.Parse(tmpGatherExtraURL)
+				if err != nil {
+					return prowInfo, fmt.Errorf("Failed to parse e2e link %s: %v", tmpE2eURL, err)
+				}
+				break
+			}
+		}
+		e2eURL = gatherExtraUrl
 	}
 
 	gcsMetricsURL := fmt.Sprintf("%s%s", e2eURL.String(), promTarPath)

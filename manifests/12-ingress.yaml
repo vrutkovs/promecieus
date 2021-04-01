@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: cert-issuer
+  name: promecieus
+  namespace: promecieus
+spec:
+  tls:
+    - secretName: promecieus-tls
+      hosts:
+        - promecieus.dptools.openshift.org
+  rules:
+  - host: promecieus.dptools.openshift.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: promecieus
+            port:
+              number: 8080
+        pathType: ImplementationSpecific

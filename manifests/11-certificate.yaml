@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: promecieus-tls
+  namespace: promecieus
+spec:
+  secretName: promecieus-tls
+  issuerRef:
+    name: cert-issuer
+    kind: ClusterIssuer
+  dnsNames:
+  - promecieus.dptools.openshift.org

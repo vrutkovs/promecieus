@@ -1,4 +1,4 @@
-FROM registry.svc.ci.openshift.org/openshift/release:golang-1.15 AS builder
+FROM registry.ci.openshift.org/openshift/release:golang-1.15 AS builder
 WORKDIR /go/src/github.com/vrutkovs/promecieus
 COPY . .
 RUN go mod vendor && go build -o ./promecieus ./cmd/promecieus

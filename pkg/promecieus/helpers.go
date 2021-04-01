@@ -238,7 +238,7 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL string) (ProwInfo, error) {
 	}
 
 	// Support new-style jobs - look for gather-extra
-	var gatherExtraUrl *url.URL
+	var gatherExtraURL *url.URL
 
 	e2eToplinks, err := getLinksFromURL(e2eURL.String())
 	if err != nil {
@@ -257,7 +257,7 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL string) (ProwInfo, error) {
 		log.Printf("lastPathSection: %s", lastPathSegment)
 		if lastPathSegment == extraPath {
 			tmpMetricsURL := gcsPrefix + link
-			gatherExtraUrl, err = url.Parse(tmpMetricsURL)
+			gatherExtraURL, err = url.Parse(tmpMetricsURL)
 			if err != nil {
 				return prowInfo, fmt.Errorf("Failed to parse e2e link %s: %v", tmpE2eURL, err)
 			}
@@ -265,9 +265,9 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL string) (ProwInfo, error) {
 		}
 	}
 
-	if gatherExtraUrl != nil {
+	if gatherExtraURL != nil {
 		// New-style jobs may not have metrics available
-		e2eToplinks, err = getLinksFromURL(gatherExtraUrl.String())
+		e2eToplinks, err = getLinksFromURL(gatherExtraURL.String())
 		if err != nil {
 			return prowInfo, fmt.Errorf("Failed to fetch gather-extra link at %s: %v", e2eURL, err)
 		}
@@ -284,14 +284,14 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL string) (ProwInfo, error) {
 			log.Printf("lastPathSection: %s", lastPathSegment)
 			if lastPathSegment == artifactsPath {
 				tmpGatherExtraURL := gcsPrefix + link
-				gatherExtraUrl, err = url.Parse(tmpGatherExtraURL)
+				gatherExtraURL, err = url.Parse(tmpGatherExtraURL)
 				if err != nil {
 					return prowInfo, fmt.Errorf("Failed to parse e2e link %s: %v", tmpE2eURL, err)
 				}
 				break
 			}
 		}
-		e2eURL = gatherExtraUrl
+		e2eURL = gatherExtraURL
 	}
 
 	gcsMetricsURL := fmt.Sprintf("%s%s", e2eURL.String(), promTarPath)

@@ -143,11 +143,14 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, rawURL string
 	}
 
 	dsID, err := s.addDataSource(appLabel, promRoute)
-	if err != nil {
-		sendWSMessage(conn, "failure", err.Error())
+	if err == nil {
+		s.Datasources[appLabel] = dsID
+		sendWSMessage(conn, "status", fmt.Sprintf("Added %s datasource at %s", appLabel, s.Grafana.URL))
+	} else {
+		if s.Grafana.URL != "" && s.Grafana.Token != "" && s.Grafana.Cookie != "" {
+			sendWSMessage(conn, "failure", err.Error())
+		}
 	}
-	s.Datasources[appLabel] = dsID
-	sendWSMessage(conn, "status", fmt.Sprintf("Added %s datasource at %s", appLabel, s.Grafana.URL))
 	sendWSMessage(conn, "done", "Pod is ready")
 }
 

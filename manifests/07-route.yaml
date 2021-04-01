@@ -4,8 +4,6 @@ metadata:
   name: promecieus
   namespace: promecieus
 spec:
-  host: promecieus.vrutkovs.eu
-  subdomain: ''
   to:
     kind: Service
     name: promecieus

@@ -9,9 +9,6 @@ spec:
   lookupPolicy:
     local: false
   tags:
-  - name: src
-    referencePolicy:
-      type: Source
-  - name: bin
+  - name: latest
     referencePolicy:
       type: Source

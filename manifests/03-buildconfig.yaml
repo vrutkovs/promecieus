@@ -11,7 +11,7 @@ spec:
   output:
     to:
       kind: ImageStreamTag
-      name: promecieus:bin
+      name: promecieus:latest
   postCommit: {}
   resources: {}
   runPolicy: Serial

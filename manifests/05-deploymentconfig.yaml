@@ -4,7 +4,7 @@ metadata:
   annotations:
     image.openshift.io/triggers: |
       [
-        {"from":{"kind":"ImageStreamTag","name":"promecieus:bin"},"fieldPath":"spec.template.spec.containers[?(@.name==\"promecieus\")].image"}
+        {"from":{"kind":"ImageStreamTag","name":"promecieus:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"promecieus\")].image"}
       ]
   labels:
     app: promecieus
@@ -63,6 +63,6 @@ spec:
           - promecieus
         from:
           kind: ImageStreamTag
-          name: 'promecieus:bin'
+          name: 'promecieus:latest'
       type: ImageChange
     - type: ConfigChange

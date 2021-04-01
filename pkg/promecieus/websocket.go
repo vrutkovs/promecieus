@@ -128,8 +128,7 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, rawURL string
 		return
 	}
 	// Calculate a range in minutes between start and finish
-	elapsed := int(prowInfo.Finished.Sub(prowInfo.Started).Minutes())
-	finishedDate := url.QueryEscape(prowInfo.Finished.Format("2006-01-02 15:04"))
+	elapsed := prowInfo.Finished.Sub(prowInfo.Started)
 
 	// Send a sample query so that user would not have to rediscover start and finished time
 	prometheusURL, err := url.Parse(promRoute)
@@ -139,15 +138,19 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, rawURL string
 	}
 
 	params := url.Values{}
-	params.Add("g0.expr", "up")
+	// expr has to be first param
+	// params.Add("g0.expr", "up")
 	params.Add("g0.tab", "0")
 	params.Add("g0.stacked", "0")
-	params.Add("g0.range_input", fmt.Sprintf("%dm", elapsed))
-	params.Add("g0.end_input", fmt.Sprintf("%s", finishedDate))
-	prometheusURL.Path += "graph"
+	params.Add("g0.range_input", elapsed.String())
+	params.Add("g0.end_input", prowInfo.Finished.Format("2006-01-02 15:04"))
+	// prometheusURL.Path += "graph/g0.expr=up"
 	prometheusURL.RawQuery = params.Encode()
 
-	sendWSMessage(conn, "link", prometheusURL.String())
+	//sendWSMessage(conn, "link", prometheusURL.String())
+	hackedPrometheusURL := fmt.Sprintf("%s/graph?g0.expr=up&%s", promRoute, params.Encode())
+	sendWSMessage(conn, "link", hackedPrometheusURL)
+
 	sendWSMessage(conn, "progress", "Waiting for pods to become ready")
 	if err := s.waitForDeploymentReady(appLabel); err != nil {
 		sendWSMessage(conn, "failure", err.Error())

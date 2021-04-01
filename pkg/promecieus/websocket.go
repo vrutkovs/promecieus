@@ -132,10 +132,22 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, rawURL string
 	finishedDate := url.QueryEscape(prowInfo.Finished.Format("2006-01-02 15:04"))
 
 	// Send a sample query so that user would not have to rediscover start and finished time
-	query := fmt.Sprintf("g0.range_input=%dm&g0.end_input=%s&g0.expr=up&g0.tab=0", elapsed, finishedDate)
-	sampleQuery := fmt.Sprintf("%s/graph?%s", promRoute, query)
+	prometheusURL, err := url.Parse(promRoute)
+	if err != nil {
+		sendWSMessage(conn, "failure", err.Error())
+		return
+	}
 
-	sendWSMessage(conn, "link", sampleQuery)
+	params := url.Values{}
+	params.Add("g0.expr", "up")
+	params.Add("g0.tab", "0")
+	params.Add("g0.stacked", "0")
+	params.Add("g0.range_input", fmt.Sprintf("%dm", elapsed))
+	params.Add("g0.end_input", fmt.Sprintf("%s", finishedDate))
+	prometheusURL.Path += "graph"
+	prometheusURL.RawQuery = params.Encode()
+
+	sendWSMessage(conn, "link", prometheusURL.String())
 	sendWSMessage(conn, "progress", "Waiting for pods to become ready")
 	if err := s.waitForDeploymentReady(appLabel); err != nil {
 		sendWSMessage(conn, "failure", err.Error())

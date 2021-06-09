@@ -17,8 +17,9 @@ import (
 
 // WSMessage represents websocket message format
 type WSMessage struct {
-	Message string `json:"message"`
-	Action  string `json:"action"`
+	Message string            `json:"message"`
+	Action  string            `json:"action"`
+	Data    map[string]string `json:"data,omitempty"`
 }
 
 var wsupgrader = websocket.Upgrader{
@@ -30,6 +31,21 @@ func sendWSMessage(conn *websocket.Conn, action string, message string) {
 	response := WSMessage{
 		Action:  action,
 		Message: message,
+	}
+	responseJSON, err := json.Marshal(response)
+	if err != nil {
+		fmt.Println("Can't serialize", response)
+	}
+	if conn != nil {
+		conn.WriteMessage(websocket.TextMessage, responseJSON)
+	}
+}
+
+func sendWSMessageWithData(conn *websocket.Conn, action string, message string, data map[string]string) {
+	response := WSMessage{
+		Action:  action,
+		Message: message,
+		Data:    data,
 	}
 	responseJSON, err := json.Marshal(response)
 	if err != nil {
@@ -166,7 +182,11 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, rawURL string
 			sendWSMessage(conn, "failure", err.Error())
 		}
 	}
-	sendWSMessage(conn, "done", "Pod is ready")
+	data := map[string]string{
+		"hash": appLabel,
+		"url":  hackedPrometheusURL,
+	}
+	sendWSMessageWithData(conn, "done", "Pod is ready", data)
 }
 
 // GrafanaDatasource represents a datasource to be created

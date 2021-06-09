@@ -1,3 +1,5 @@
+let storage = new Storage();
+
 class SearchBar extends React.Component {
   constructor(props) {
     super(props);
@@ -150,6 +152,39 @@ class Status extends React.Component {
   }
 }
 
+class AppsList extends React.Component {
+  render() {
+    let appCount = Object.keys(this.props.apps).length;
+    if (appCount === 0) {
+      return false;
+    }
+
+    let header = <h4>Currently running Prometheus instances</h4>
+    let apps = Object.keys(this.props.apps).map(k => {
+      return (
+        <ReactBootstrap.Row>
+          <ReactBootstrap.Col xs={2}>
+            <a target="_blank" href={this.props.apps[k]}>{k}</a>
+          </ReactBootstrap.Col>
+          <ReactBootstrap.Col xs={3}>
+            <DeleteAppButton
+                onDeleteApp={() => {
+                  this.props.onDeleteApp(k)
+                }}
+                appName={k}
+            />
+          </ReactBootstrap.Col>
+        </ReactBootstrap.Row>
+      )
+    })
+
+    return <div>
+      {header}
+      {apps}
+    </div>
+  }
+}
+
 class SearchForm extends React.Component {
   constructor(props) {
     super(props);
@@ -158,6 +193,7 @@ class SearchForm extends React.Component {
       searchInput: '',
       messages: [],
       appName: null,
+      apps: storage.getData(),
       ws: null,
       resourceQuota: {
         used: 0,
@@ -167,7 +203,9 @@ class SearchForm extends React.Component {
 
     this.handleSearchInput = this.handleSearchInput.bind(this);
     this.handleSearchSubmit = this.handleSearchSubmit.bind(this);
+    this.handleDeleteAppInternal = this.handleDeleteAppInternal.bind(this);
     this.handleDeleteApp = this.handleDeleteApp.bind(this);
+    this.handleDeleteCurrentApp = this.handleDeleteCurrentApp.bind(this);
     this.addMessage = this.addMessage.bind(this);
     this.sendWSMessage = this.sendWSMessage.bind(this);
     this.connect = this.connect.bind(this);
@@ -215,15 +253,35 @@ class SearchForm extends React.Component {
     }
   }
 
-  handleDeleteApp(event) {
+  handleDeleteApp(appName) {
+    console.log(appName)
+    if (this.state.appName === appName) {
+      this.handleDeleteCurrentApp()
+    } else {
+      this.handleDeleteAppInternal(appName)
+    }
+  }
+
+  handleDeleteCurrentApp() {
+    this.handleDeleteAppInternal(this.state.appName)
+    // Remove message with app-label from the list
+    let newMessages = this.state.messages.slice(1, this.state.messages.length)
+    this.setState(state => ({
+      messages: newMessages,
+      appName: null,
+    }))
+  }
+
+  handleDeleteAppInternal(appName) {
     try {
       this.sendWSMessage(JSON.stringify({
         'action': 'delete',
-        'message': this.state.appName
+        'message': appName
       }))
-      // Remove message with app-label from the list
-      let newMessages = this.state.messages.slice(1, this.state.messages.length)
-      this.setState(state => ({ messages: newMessages, appName: null }))
+      storage.removeInstance(appName)
+      this.setState(state => ({
+        apps: storage.getData(),
+      }))
     } catch (error) {
       console.log(error)
     }
@@ -240,6 +298,10 @@ class SearchForm extends React.Component {
         return message.action != "progress";
       });
       this.setState(state => ({ messages: newMessages }))
+      if (message.data != null) {
+        storage.addInstance(message.data.hash, message.data.url)
+      }
+      this.setState(state => ({apps: storage.getData()}))
     }
     if (message.action === "rquota") {
       let rquotaStatus = JSON.parse(message.message)
@@ -352,7 +414,7 @@ class SearchForm extends React.Component {
           searchInput={this.state.searchInput}
           onSearchInput={this.handleSearchInput}
           onSearchSubmit={this.handleSearchSubmit}
-          onDeleteApp={this.handleDeleteApp}
+          onDeleteApp={this.handleDeleteCurrentApp}
           appName={this.state.appName}
         />
         <ReactBootstrap.Row>
@@ -366,6 +428,11 @@ class SearchForm extends React.Component {
         </ReactBootstrap.Row>
         <br />
         {messages}
+        <AppsList
+            currentApp={this.state.appName}
+            apps={this.state.apps}
+            onDeleteApp={this.handleDeleteApp}
+        />
       </div>
     );
   }

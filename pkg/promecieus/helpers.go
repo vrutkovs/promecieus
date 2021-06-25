@@ -136,7 +136,9 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL string) (ProwInfo, error) {
 
 	// Is it a direct prom tarball link?
 	if strings.HasSuffix(baseURL, promTarPath) {
-		prowInfo.MetricsURL = baseURL
+		// Make it a fetchable URL if it's a gcsweb URL
+		tempMetricsURL := strings.Replace(baseURL, gcsPrefix+"/gcs", storagePrefix, -1)
+		prowInfo.MetricsURL = tempMetricsURL
 		// there is no way to find out the time via direct tarball link, use current time
 		prowInfo.Finished = time.Now()
 		prowInfo.Started = time.Now()

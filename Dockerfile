@@ -4,7 +4,7 @@ COPY . .
 RUN go mod vendor && go build -o ./promecieus ./cmd/promecieus
 
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.2
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.4
 COPY --from=builder /go/src/github.com/vrutkovs/promecieus/promecieus /bin/promecieus
 COPY --from=builder /go/src/github.com/vrutkovs/promecieus/html /srv/html
 WORKDIR /srv

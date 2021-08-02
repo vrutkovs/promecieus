@@ -9,7 +9,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/googleapis/gnostic v0.3.1 // indirect
 	github.com/gorilla/websocket v1.4.2
-	github.com/jasonlvhit/gocron v0.0.0-20200423141508-ab84337f7963
+	github.com/jasonlvhit/gocron v0.0.1
 	github.com/json-iterator/go v1.1.11 // indirect
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/openshift/api v0.0.0-20200217161739-c99157bc6492

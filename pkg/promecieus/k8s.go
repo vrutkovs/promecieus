@@ -24,7 +24,7 @@ import (
 const (
 	deploymentRolloutTime = 5 * time.Minute
 	deploymentLifetime    = 8 * time.Hour
-	prometheusImage       = "quay.io/prometheus/prometheus:v2.30.0"
+	prometheusImage       = "quay.io/prometheus/prometheus:v2.30.2"
 	ciFetcherImage        = "registry.fedoraproject.org/fedora:33"
 )
 

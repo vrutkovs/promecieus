@@ -15,7 +15,7 @@ require (
 	github.com/openshift/api v0.0.0-20200217161739-c99157bc6492
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
 	github.com/ugorji/go v1.2.6 // indirect
-	golang.org/x/net v0.0.0-20210726213435-c6fcb2dbf985
+	golang.org/x/net v0.0.0-20210929193557-e81a3d93ecf6
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

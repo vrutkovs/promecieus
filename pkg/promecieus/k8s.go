@@ -24,7 +24,7 @@ import (
 const (
 	deploymentRolloutTime = 5 * time.Minute
 	deploymentLifetime    = 8 * time.Hour
-	prometheusImage       = "quay.io/prometheus/prometheus:v2.31.0"
+	prometheusImage       = "quay.io/prometheus/prometheus:v2.32.0"
 	ciFetcherImage        = "registry.access.redhat.com/ubi8/ubi:8.4"
 )
 

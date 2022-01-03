@@ -25,7 +25,7 @@ const (
 	deploymentRolloutTime = 5 * time.Minute
 	deploymentLifetime    = 8 * time.Hour
 	prometheusImage       = "quay.io/prometheus/prometheus:v2.32.0"
-	ciFetcherImage        = "registry.access.redhat.com/ubi8/ubi:8.4"
+	ciFetcherImage        = "registry.access.redhat.com/ubi8/ubi:8.5"
 )
 
 func buildConfig(kubeconfig string) (*rest.Config, error) {

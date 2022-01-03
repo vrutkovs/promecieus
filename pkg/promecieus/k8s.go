@@ -164,7 +164,7 @@ func (s *ServerSettings) launchPromApp(appLabel string, metricsTar string) (stri
 	}
 	_, err := s.K8sClient.AppsV1().Deployments(s.Namespace).Create(deployment)
 	if err != nil {
-		return "", fmt.Errorf("Failed to create new deployment: %s", err.Error())
+		return "", fmt.Errorf("failed to create new deployment: %s", err.Error())
 	}
 
 	service := &corev1.Service{
@@ -189,7 +189,7 @@ func (s *ServerSettings) launchPromApp(appLabel string, metricsTar string) (stri
 	}
 	_, err = s.K8sClient.CoreV1().Services(s.Namespace).Create(service)
 	if err != nil {
-		return "", fmt.Errorf("Failed to create new service: %s", err.Error())
+		return "", fmt.Errorf("failed to create new service: %s", err.Error())
 	}
 
 	promRoute := &routeApi.Route{
@@ -215,7 +215,7 @@ func (s *ServerSettings) launchPromApp(appLabel string, metricsTar string) (stri
 	}
 	route, err := s.RouteClient.Routes(s.Namespace).Create(promRoute)
 	if err != nil {
-		return "", fmt.Errorf("Failed to create route: %v", err)
+		return "", fmt.Errorf("failed to create route: %v", err)
 	}
 
 	return fmt.Sprintf("https://%s", route.Spec.Host), nil
@@ -227,7 +227,7 @@ func (s *ServerSettings) waitForDeploymentReady(appLabel string) error {
 	return wait.PollImmediate(time.Second, deploymentRolloutTime, func() (bool, error) {
 		dep, err := s.K8sClient.AppsV1().Deployments(s.Namespace).Get(depName, metav1.GetOptions{})
 		if err != nil {
-			return true, fmt.Errorf("Failed to fetch deployment: %v", err)
+			return true, fmt.Errorf("failed to fetch deployment: %v", err)
 		}
 		return dep.Status.AvailableReplicas == 1, nil
 	})
@@ -240,13 +240,13 @@ func (s *ServerSettings) deletePods(appLabel string) (string, error) {
 	listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", appLabel)}
 	svcList, err := s.K8sClient.CoreV1().Services(s.Namespace).List(listOpts)
 	if err != nil || svcList.Items == nil {
-		return "", fmt.Errorf("Failed to find services: %v", err)
+		return "", fmt.Errorf("failed to find services: %v", err)
 	}
 	for _, svc := range svcList.Items {
 		err := s.K8sClient.CoreV1().Services(s.Namespace).Delete(svc.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return strings.Join(actionLog, "\n"),
-				fmt.Errorf("Error removing service %s: %v", svc.Name, err)
+				fmt.Errorf("error removing service %s: %v", svc.Name, err)
 		}
 		actionLog = append(actionLog, fmt.Sprintf("Removed service %s", svc.Name))
 	}
@@ -254,13 +254,13 @@ func (s *ServerSettings) deletePods(appLabel string) (string, error) {
 	// Delete deployment
 	depList, err := s.K8sClient.AppsV1().Deployments(s.Namespace).List(listOpts)
 	if err != nil || depList.Items == nil {
-		return "", fmt.Errorf("Failed to find deployments: %v", err)
+		return "", fmt.Errorf("failed to find deployments: %v", err)
 	}
 	for _, dep := range depList.Items {
 		err := s.K8sClient.AppsV1().Deployments(s.Namespace).Delete(dep.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return strings.Join(actionLog, "\n"),
-				fmt.Errorf("Error removing deployment %s: %v", dep.Name, err)
+				fmt.Errorf("error removing deployment %s: %v", dep.Name, err)
 		}
 		actionLog = append(actionLog, fmt.Sprintf("Removed deployment %s", dep.Name))
 	}
@@ -268,13 +268,13 @@ func (s *ServerSettings) deletePods(appLabel string) (string, error) {
 	// Delete configmap
 	cmList, err := s.K8sClient.CoreV1().ConfigMaps(s.Namespace).List(listOpts)
 	if err != nil || cmList.Items == nil {
-		return "", fmt.Errorf("Failed to find config maps: %v", err)
+		return "", fmt.Errorf("failed to find config maps: %v", err)
 	}
 	for _, cm := range cmList.Items {
 		err := s.K8sClient.CoreV1().ConfigMaps(s.Namespace).Delete(cm.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return strings.Join(actionLog, "\n"),
-				fmt.Errorf("Error removing config map %s: %v", cm.Name, err)
+				fmt.Errorf("error removing config map %s: %v", cm.Name, err)
 		}
 		actionLog = append(actionLog, fmt.Sprintf("Removed config map %s", cm.Name))
 	}
@@ -282,13 +282,13 @@ func (s *ServerSettings) deletePods(appLabel string) (string, error) {
 	// Delete route
 	routeList, err := s.RouteClient.Routes(s.Namespace).List(listOpts)
 	if err != nil || routeList.Items == nil {
-		return "", fmt.Errorf("Failed to find routes: %v", err)
+		return "", fmt.Errorf("failed to find routes: %v", err)
 	}
 	for _, route := range routeList.Items {
 		err := s.RouteClient.Routes(s.Namespace).Delete(route.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return strings.Join(actionLog, "\n"),
-				fmt.Errorf("Error removing route %s: %v", route.Name, err)
+				fmt.Errorf("error removing route %s: %v", route.Name, err)
 		}
 		actionLog = append(actionLog, fmt.Sprintf("Removed route %s", route.Name))
 	}
@@ -328,7 +328,7 @@ func (s *ServerSettings) CleanupOldDeployements() {
 func (s *ServerSettings) GetResourceQuota() error {
 	rquota, err := s.K8sClient.CoreV1().ResourceQuotas(s.Namespace).Get(s.RQuotaName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("Failed to get ResourceQuota: %v", err)
+		return fmt.Errorf("failed to get ResourceQuota: %v", err)
 	}
 	s.RQStatus = &RQuotaStatus{
 		Used: rquota.Status.Used.Pods().Value(),

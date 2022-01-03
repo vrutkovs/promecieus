@@ -235,21 +235,21 @@ func (s *ServerSettings) addDataSource(appLabel, promRoute string) (int, error) 
 	apiURL := fmt.Sprintf("%s/api/datasources", s.Grafana.URL)
 	req, err := s.grafanaRequest("POST", apiURL, bytes.NewBuffer(data))
 	if err != nil {
-		return 0, fmt.Errorf("Failed to construct POST request to %s: %v", apiURL, err)
+		return 0, fmt.Errorf("failed to construct POST request to %s: %v", apiURL, err)
 	}
 	resp, err := netClient.Do(req)
 	if err != nil {
-		return 0, fmt.Errorf("Failed to perform request %s: %v", apiURL, err)
+		return 0, fmt.Errorf("failed to perform request %s: %v", apiURL, err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return 0, fmt.Errorf("Failed to read body: %v", err)
+		return 0, fmt.Errorf("failed to read body: %v", err)
 	}
 	dsResponse := &GrafanaDatasourceResponse{}
 	if err := json.Unmarshal(body, dsResponse); err != nil {
-		return 0, fmt.Errorf("Failed to unmarshal response %s : %v", body, err)
+		return 0, fmt.Errorf("failed to unmarshal response %s : %v", body, err)
 	}
 	return dsResponse.DataSource.ID, nil
 }
@@ -261,21 +261,21 @@ func (s *ServerSettings) removeDataSource(id int) error {
 	apiURL := fmt.Sprintf("%s/api/datasources/%d", s.Grafana.URL, id)
 	req, err := s.grafanaRequest("DELETE", apiURL, nil)
 	if err != nil {
-		return fmt.Errorf("Failed to construct DELETE request to %s: %v", apiURL, err)
+		return fmt.Errorf("failed to construct DELETE request to %s: %v", apiURL, err)
 	}
 	resp, err := netClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("Failed to perform request %s: %v", apiURL, err)
+		return fmt.Errorf("failed to perform request %s: %v", apiURL, err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("Failed to read body: %v", err)
+		return fmt.Errorf("failed to read body: %v", err)
 	}
 	dsResponse := &GrafanaDatasourceResponse{}
 	if err := json.Unmarshal(body, dsResponse); err != nil {
-		return fmt.Errorf("Failed to unmarshal response %s : %v", body, err)
+		return fmt.Errorf("failed to unmarshal response %s : %v", body, err)
 	}
 	return nil
 

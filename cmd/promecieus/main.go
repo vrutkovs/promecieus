@@ -66,6 +66,7 @@ func main() {
 	}
 
 	r := gin.New()
+	r.SetTrustedProxies(nil)
 
 	// Server static HTML
 	r.Use(static.Serve("/", static.LocalFile("./html", true)))

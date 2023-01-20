@@ -106,6 +106,7 @@ func (s *ServerSettings) sendResourceQuotaUpdate() {
 	if err != nil {
 		log.Fatalf("Can't serialize %s", err)
 	}
+	log.Printf("Sending RQuota update to : %#v", s.Conns)
 	for _, conn := range s.Conns {
 		sendWSMessage(conn, "rquota", string(rqsJSON))
 	}

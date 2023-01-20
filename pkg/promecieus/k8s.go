@@ -16,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/apimachinery/pkg/util/wait"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -224,14 +223,29 @@ func (s *ServerSettings) launchPromApp(ctx context.Context, appLabel string, met
 
 func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel string) error {
 	deploymentName := fmt.Sprintf("%s-prom", appLabel)
+	watcher, err := s.K8sClient.AppsV1().Deployments(s.Namespace).Watch(ctx, metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to fetch deployment: %v", err)
+	}
+	defer watcher.Stop()
 
-	return wait.PollImmediate(time.Second, deploymentRolloutTime, func() (bool, error) {
-		dep, err := s.K8sClient.AppsV1().Deployments(s.Namespace).Get(ctx, deploymentName, metav1.GetOptions{})
-		if err != nil {
-			return true, fmt.Errorf("failed to fetch deployment: %v", err)
+	timer := time.NewTimer(deploymentRolloutTime)
+	for {
+		select {
+		case event := <-watcher.ResultChan():
+			deployment, ok := event.Object.(*appsv1.Deployment)
+			if !ok {
+				log.Printf("invalid object watched: %#v", deployment)
+				continue
+			}
+			if deployment.Status.AvailableReplicas == 1 {
+				return nil
+			}
+		case <-timer.C:
+			log.Printf("timed out waiting for deployment %s to rollout", deploymentName)
+			return fmt.Errorf("timeout error")
 		}
-		return dep.Status.AvailableReplicas == 1, nil
-	})
+	}
 }
 
 func (s *ServerSettings) deletePods(ctx context.Context, appLabel string) (string, error) {

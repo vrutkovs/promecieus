@@ -300,7 +300,7 @@ class SearchForm extends React.Component {
     if (message.action === "app-label") {
       this.setState(state => ({appName: message.message}))
     }
-    if (message.action === "done") {
+    if (message.action === "done" || message.action === "error"  || message.action === "failure") {
       // Remove message with progress from the list
       let newMessages = this.state.messages.filter(function(message){
         return message.action != "progress";

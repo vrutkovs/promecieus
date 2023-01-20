@@ -301,7 +301,7 @@ func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel st
 			if err != nil {
 				return fmt.Errorf("error copying logs in pod %s created by deployment %s: %v, please report this to #forum-crt", pod.Name, deploymentName, err)
 			}
-			return fmt.Errorf("%w: %s", ErrorContainerLog, buf.String())
+			return fmt.Errorf("%w:\n%s", ErrorContainerLog, buf.String())
 		}
 	}
 }

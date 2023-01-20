@@ -350,6 +350,7 @@ class SearchForm extends React.Component {
       clearTimeout(connectInterval); // clear Interval on on open of websocket connection
 
       // Send messages if there's a queue
+      ws.send(JSON.stringify({"action": "connect"}))
       while (that.ws_msgs && that.ws_msgs.length > 0) {
         ws.send(that.ws_msgs.pop())
       }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -21,6 +22,11 @@ type WSMessage struct {
 	Message string            `json:"message"`
 	Action  string            `json:"action"`
 	Data    map[string]string `json:"data,omitempty"`
+}
+
+type ContainerLogError struct {
+	Header  string `json:"header"`
+	Message string `json:"message"`
 }
 
 var wsupgrader = websocket.Upgrader{
@@ -173,7 +179,20 @@ func (s *ServerSettings) createNewPrometheus(ctx context.Context, conn *websocke
 
 	sendWSMessage(conn, "progress", "Waiting for pods to become ready")
 	if err := s.waitForDeploymentReady(ctx, appLabel); err != nil {
-		sendWSMessage(conn, "failure", err.Error())
+		if errors.Is(err, ErrorContainerLog) {
+			unwrapped := errors.Unwrap(err)
+			newContainerLogError := ContainerLogError{
+				Header:  ErrorContainerLog.Error(),
+				Message: unwrapped.Error(),
+			}
+			errorJSON, err := json.Marshal(newContainerLogError)
+			if err != nil {
+				log.Fatalf("Can't serialize container log error %s", err)
+			}
+			sendWSMessage(conn, "error", string(errorJSON))
+		} else {
+			sendWSMessage(conn, "failure", err.Error())
+		}
 		return
 	}
 

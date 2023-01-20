@@ -96,6 +96,16 @@ class Message extends React.Component {
           </ReactBootstrap.Alert>
         )
         break;
+      case 'error':
+        return (
+          <ReactBootstrap.Alert className="alert-small" variant="danger">
+            <ReactBootstrap.Alert.Heading>{this.props.title}</ReactBootstrap.Alert.Heading>
+            <pre>
+              {this.props.message}
+            </pre>
+          </ReactBootstrap.Alert>
+        )
+        break;
       default:
         return (
           <span></span>

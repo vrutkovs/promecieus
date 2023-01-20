@@ -3,6 +3,7 @@ package promecieus
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -29,6 +30,10 @@ const (
 	prometheusImage       = "quay.io/prometheus/prometheus:v2.37.0"
 	ciFetcherImage        = "registry.access.redhat.com/ubi8/ubi:8.6"
 	promAppLabel          = "%s-prom"
+)
+
+var (
+	ErrorContainerLog = errors.New("failed to start prometheus")
 )
 
 func buildConfig(kubeconfig string) (*rest.Config, error) {
@@ -296,7 +301,7 @@ func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel st
 			if err != nil {
 				return fmt.Errorf("error copying logs in pod %s created by deployment %s: %v, please report this to #forum-crt", pod.Name, deploymentName, err)
 			}
-			return fmt.Errorf("failed to fetch prometheus logs: %s", buf.String())
+			return fmt.Errorf("%w: %s", ErrorContainerLog, buf.String())
 		}
 	}
 }

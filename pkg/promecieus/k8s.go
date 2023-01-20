@@ -1,8 +1,10 @@
 package promecieus
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"strings"
@@ -26,6 +28,7 @@ const (
 	deploymentLifetime    = 4 * time.Hour
 	prometheusImage       = "quay.io/prometheus/prometheus:v2.37.0"
 	ciFetcherImage        = "registry.access.redhat.com/ubi8/ubi:8.6"
+	promAppLabel          = "%s-prom"
 )
 
 func buildConfig(kubeconfig string) (*rest.Config, error) {
@@ -68,7 +71,7 @@ func (s *ServerSettings) launchPromApp(ctx context.Context, appLabel string, met
 	// Declare and create new deployment
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-prom", appLabel),
+			Name: fmt.Sprintf(promAppLabel, appLabel),
 			Labels: map[string]string{
 				"app": appLabel,
 			},
@@ -222,7 +225,7 @@ func (s *ServerSettings) launchPromApp(ctx context.Context, appLabel string, met
 }
 
 func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel string) error {
-	deploymentName := fmt.Sprintf("%s-prom", appLabel)
+	deploymentName := fmt.Sprintf(promAppLabel, appLabel)
 	watcher, err := s.K8sClient.AppsV1().Deployments(s.Namespace).Watch(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to fetch deployment: %v", err)
@@ -243,7 +246,52 @@ func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel st
 			}
 		case <-timer.C:
 			log.Printf("timed out waiting for deployment %s to rollout", deploymentName)
-			return fmt.Errorf("timeout error")
+			// Find the pod created by this deployment
+			listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", deploymentName)}
+			podList, err := s.K8sClient.CoreV1().Pods(s.Namespace).List(ctx, listOpts)
+			if err != nil || podList.Items == nil || len(podList.Items) < 1 {
+				return fmt.Errorf("failed to find pods created by deployment %s: %v, please report this to #forum-crt", deploymentName, err)
+			}
+			pod := podList.Items[0] // We only create one pod
+
+			// Find the failing container in initContainers or containers
+			failingContainerName := ""
+			for _, initContainerStatus := range pod.Status.InitContainerStatuses {
+				if !initContainerStatus.Ready {
+					failingContainerName = initContainerStatus.Name
+					break
+				}
+			}
+			if failingContainerName == "" {
+				for _, containerStatus := range pod.Status.ContainerStatuses {
+					if !containerStatus.Ready {
+						failingContainerName = containerStatus.Name
+						break
+					}
+				}
+			}
+			if failingContainerName == "" {
+				return fmt.Errorf("failed to find failing container in pod %s created by deployment %s: %v, please report this to #forum-crt", pod.Name, deploymentName, err)
+			}
+
+			// Fetch container logs
+			podLogOptions := corev1.PodLogOptions{
+				Container: failingContainerName,
+				Follow:    false,
+			}
+			req := s.K8sClient.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOptions)
+			podLogs, err := req.Stream(ctx)
+			if err != nil {
+				return fmt.Errorf("error opening stream to fetch failing logs in pod %s created by deployment %s: %v, please report this to #forum-crt", pod.Name, deploymentName, err)
+			}
+			defer podLogs.Close()
+
+			buf := new(bytes.Buffer)
+			_, err = io.Copy(buf, podLogs)
+			if err != nil {
+				return fmt.Errorf("error copying logs in pod %s created by deployment %s: %v, please report this to #forum-crt", pod.Name, deploymentName, err)
+			}
+			return fmt.Errorf("failed to fetch prometheus logs: %s", buf.String())
 		}
 	}
 }

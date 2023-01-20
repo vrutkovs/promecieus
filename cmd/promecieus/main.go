@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -59,10 +60,12 @@ func main() {
 		Datasources: make(map[string]int),
 		Grafana:     &grafana,
 	}
-	if server.GetResourceQuota() != nil {
+
+	ctx := context.Background()
+	if server.GetResourceQuota(ctx) != nil {
 		fmt.Print("Failed to read initial resource quota")
 	} else {
-		go server.WatchResourceQuota()
+		go server.WatchResourceQuota(ctx)
 	}
 
 	r := gin.New()

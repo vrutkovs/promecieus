@@ -2,6 +2,7 @@ package promecieus
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -65,6 +66,8 @@ func (s *ServerSettings) HandleStatusViaWS(c *gin.Context) {
 		return
 	}
 
+	ctx := context.Background()
+
 	for {
 		t, msg, err := conn.ReadMessage()
 		log.Printf("Got ws message: %s", msg)
@@ -91,9 +94,9 @@ func (s *ServerSettings) HandleStatusViaWS(c *gin.Context) {
 			s.Conns[conn.RemoteAddr().String()] = conn
 			go s.sendResourceQuotaUpdate()
 		case "new":
-			go s.createNewPrometheus(conn, m.Message)
+			go s.createNewPrometheus(ctx, conn, m.Message)
 		case "delete":
-			go s.removeProm(conn, m.Message)
+			go s.removeProm(ctx, conn, m.Message)
 		}
 	}
 }
@@ -108,9 +111,9 @@ func (s *ServerSettings) sendResourceQuotaUpdate() {
 	}
 }
 
-func (s *ServerSettings) removeProm(conn *websocket.Conn, appName string) {
+func (s *ServerSettings) removeProm(ctx context.Context, conn *websocket.Conn, appName string) {
 	sendWSMessage(conn, "status", fmt.Sprintf("Removing app %s", appName))
-	if output, err := s.deletePods(appName); err != nil {
+	if output, err := s.deletePods(ctx, appName); err != nil {
 		sendWSMessage(conn, "failure", fmt.Sprintf("%s\n%s", output, err.Error()))
 		return
 	}
@@ -122,7 +125,7 @@ func (s *ServerSettings) removeProm(conn *websocket.Conn, appName string) {
 	sendWSMessage(conn, "done", "Prometheus instance removed")
 }
 
-func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, rawURL string) {
+func (s *ServerSettings) createNewPrometheus(ctx context.Context, conn *websocket.Conn, rawURL string) {
 	// Generate a unique app label
 	appLabel := generateAppLabel()
 	sendWSMessage(conn, "app-label", appLabel)
@@ -139,7 +142,7 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, rawURL string
 
 	var promRoute string
 	metricsTar := prowInfo.MetricsURL
-	if promRoute, err = s.launchPromApp(appLabel, metricsTar); err != nil {
+	if promRoute, err = s.launchPromApp(ctx, appLabel, metricsTar); err != nil {
 		sendWSMessage(conn, "failure", fmt.Sprintf("Failed to run a new app: %s", err.Error()))
 		return
 	}
@@ -168,7 +171,7 @@ func (s *ServerSettings) createNewPrometheus(conn *websocket.Conn, rawURL string
 	sendWSMessage(conn, "link", hackedPrometheusURL)
 
 	sendWSMessage(conn, "progress", "Waiting for pods to become ready")
-	if err := s.waitForDeploymentReady(appLabel); err != nil {
+	if err := s.waitForDeploymentReady(ctx, appLabel); err != nil {
 		sendWSMessage(conn, "failure", err.Error())
 		return
 	}

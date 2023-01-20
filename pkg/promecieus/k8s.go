@@ -248,7 +248,7 @@ func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel st
 			log.Printf("timed out waiting for deployment %s to rollout", deploymentName)
 			// Find the pod created by this deployment
 			listOpts := metav1.ListOptions{
-				LabelSelector: fmt.Sprintf("app=%s", deploymentName),
+				LabelSelector: fmt.Sprintf("app=%s", appLabel),
 			}
 			podList, err := s.K8sClient.CoreV1().Pods(s.Namespace).List(ctx, listOpts)
 			if err != nil {

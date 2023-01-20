@@ -180,16 +180,7 @@ func (s *ServerSettings) createNewPrometheus(ctx context.Context, conn *websocke
 	sendWSMessage(conn, "progress", "Waiting for pods to become ready")
 	if err := s.waitForDeploymentReady(ctx, appLabel); err != nil {
 		if errors.Is(err, ErrorContainerLog) {
-			unwrapped := errors.Unwrap(err)
-			newContainerLogError := ContainerLogError{
-				Header:  ErrorContainerLog.Error(),
-				Message: unwrapped.Error(),
-			}
-			errorJSON, err := json.Marshal(newContainerLogError)
-			if err != nil {
-				log.Fatalf("Can't serialize container log error %s", err)
-			}
-			sendWSMessage(conn, "error", string(errorJSON))
+			sendWSMessage(conn, "error", err.Error())
 		} else {
 			sendWSMessage(conn, "failure", err.Error())
 		}

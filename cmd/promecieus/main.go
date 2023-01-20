@@ -83,7 +83,7 @@ func main() {
 	r.GET("/ws/status", server.HandleStatusViaWS)
 
 	go func() {
-		gocron.Every(2).Minutes().Do(server.CleanupOldDeployements)
+		gocron.Every(2).Minutes().Do(server.CleanupOldDeployements, ctx)
 		<-gocron.Start()
 	}()
 

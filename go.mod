@@ -9,7 +9,7 @@ require (
 	github.com/jasonlvhit/gocron v0.0.1
 	github.com/openshift/api v0.0.0-20221013123533-341d389bd4a7
 	github.com/openshift/client-go v0.0.0-20211209144617-7385dd6338e3
-	golang.org/x/net v0.4.0
+	golang.org/x/net v0.5.0
 	k8s.io/api v0.25.6
 	k8s.io/apimachinery v0.25.6
 	k8s.io/client-go v0.25.6

@@ -110,6 +110,9 @@ func (s *ServerSettings) HandleStatusViaWS(c *gin.Context) {
 func (s *ServerSettings) AddOrUpdateWS(conn *websocket.Conn) {
 	s.Conns.Lock()
 	defer s.Conns.Unlock()
+	if s.Conns.list == nil {
+		s.Conns.list = make(map[string]*websocket.Conn)
+	}
 	s.Conns.list[conn.RemoteAddr().String()] = conn
 }
 

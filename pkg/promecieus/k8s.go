@@ -247,10 +247,15 @@ func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel st
 		case <-timer.C:
 			log.Printf("timed out waiting for deployment %s to rollout", deploymentName)
 			// Find the pod created by this deployment
-			listOpts := metav1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", deploymentName)}
+			listOpts := metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("app=%s", deploymentName),
+			}
 			podList, err := s.K8sClient.CoreV1().Pods(s.Namespace).List(ctx, listOpts)
-			if err != nil || podList.Items == nil || len(podList.Items) < 1 {
-				return fmt.Errorf("failed to find pods created by deployment %s: %v, please report this to #forum-crt", deploymentName, err)
+			if err != nil {
+				return fmt.Errorf("error finding pods created by deployment %s: %v, please report this to #forum-crt", deploymentName, err)
+			}
+			if podList.Items == nil || len(podList.Items) < 1 {
+				return fmt.Errorf("failed to list pods created by deployment %s: %#v, please report this to #forum-crt", deploymentName, podList)
 			}
 			pod := podList.Items[0] // We only create one pod
 

@@ -79,7 +79,7 @@ func (s *ServerSettings) HandleStatusViaWS(c *gin.Context) {
 		log.Printf("Got ws message: %s", msg)
 		if err != nil {
 			if !websocket.IsCloseError(err, 1001, 1006) {
-				delete(s.Conns, conn.RemoteAddr().String())
+				s.RemoveWS(conn)
 				log.Printf("Error reading message: %+v", err)
 			}
 			break
@@ -97,7 +97,7 @@ func (s *ServerSettings) HandleStatusViaWS(c *gin.Context) {
 		log.Printf("WS message: %+v", m)
 		switch m.Action {
 		case "connect":
-			s.Conns[conn.RemoteAddr().String()] = conn
+			s.AddOrUpdateWS(conn)
 			go s.sendResourceQuotaUpdate()
 		case "new":
 			go s.createNewPrometheus(ctx, conn, m.Message)
@@ -107,13 +107,25 @@ func (s *ServerSettings) HandleStatusViaWS(c *gin.Context) {
 	}
 }
 
+func (s *ServerSettings) AddOrUpdateWS(conn *websocket.Conn) {
+	s.Conns.Lock()
+	defer s.Conns.Unlock()
+	s.Conns.list[conn.RemoteAddr().String()] = conn
+}
+
+func (s *ServerSettings) RemoveWS(conn *websocket.Conn) {
+	s.Conns.Lock()
+	defer s.Conns.Unlock()
+	delete(s.Conns.list, conn.RemoteAddr().String())
+}
+
 func (s *ServerSettings) sendResourceQuotaUpdate() {
 	rqsJSON, err := json.Marshal(s.RQStatus)
 	if err != nil {
 		log.Fatalf("Can't serialize %s", err)
 	}
 	log.Printf("Sending RQuota update to : %#v", s.Conns)
-	for _, conn := range s.Conns {
+	for _, conn := range s.Conns.list {
 		sendWSMessage(conn, "rquota", string(rqsJSON))
 	}
 }

@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"github.com/jasonlvhit/gocron"
 
 	"github.com/vrutkovs/promecieus/pkg/promecieus"
@@ -56,7 +55,7 @@ func main() {
 		Namespace:   namespace,
 		RQuotaName:  rquotaName,
 		RQStatus:    &rqStatus,
-		Conns:       make(map[string]*websocket.Conn),
+		Conns:       &promecieus.OpenSockets{},
 		Datasources: make(map[string]int),
 		Grafana:     &grafana,
 	}

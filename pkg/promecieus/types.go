@@ -1,6 +1,7 @@
 package promecieus
 
 import (
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -21,6 +22,11 @@ type RQuotaStatus struct {
 	Hard int64 `json:"hard"`
 }
 
+type OpenSockets struct {
+	sync.Mutex
+	list map[string]*websocket.Conn
+}
+
 // ServerSettings stores info about the server
 type ServerSettings struct {
 	K8sClient   *k8s.Clientset
@@ -28,7 +34,7 @@ type ServerSettings struct {
 	Namespace   string
 	RQuotaName  string
 	RQStatus    *RQuotaStatus
-	Conns       map[string]*websocket.Conn
+	Conns       *OpenSockets
 	Datasources map[string]int
 	Grafana     *GrafanaSettings
 }

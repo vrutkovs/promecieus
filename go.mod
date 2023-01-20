@@ -7,7 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.8.2
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/googleapis/gnostic v0.3.1 // indirect
-	github.com/gorilla/websocket v1.4.2
+	github.com/gorilla/websocket v1.5.0
 	github.com/jasonlvhit/gocron v0.0.1
 	github.com/openshift/api v0.0.0-20200217161739-c99157bc6492
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240

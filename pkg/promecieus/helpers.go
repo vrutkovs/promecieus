@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -249,6 +250,8 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL string) (ProwInfo, error) {
 	if len(e2eToplinks) == 0 {
 		return prowInfo, fmt.Errorf("no top links at %s found", e2eURL)
 	}
+
+	var candidates []*url.URL
 	for _, link := range e2eToplinks {
 		log.Printf("link: %s", link)
 		linkSplitBySlash := strings.Split(link, "/")
@@ -257,13 +260,31 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL string) (ProwInfo, error) {
 			lastPathSegment = linkSplitBySlash[len(linkSplitBySlash)-2]
 		}
 		log.Printf("lastPathSection: %s", lastPathSegment)
-		if lastPathSegment == extraPath {
-			tmpMetricsURL := gcsPrefix + link
-			gatherExtraURL, err = url.Parse(tmpMetricsURL)
+		switch lastPathSegment {
+		case "artifacts":
+			continue
+		case "gsutil":
+			continue
+		default:
+			u, err := url.Parse(gcsPrefix + link)
 			if err != nil {
 				return prowInfo, fmt.Errorf("failed to parse e2e link %s: %v", tmpE2eURL, err)
 			}
-			break
+			candidates = append(candidates, u)
+		}
+	}
+
+	switch len(candidates) {
+	case 0:
+		break
+	case 1:
+		gatherExtraURL = candidates[0]
+	default:
+		for _, u := range candidates {
+			if path.Base(u.Path) == extraPath {
+				gatherExtraURL = u
+				break
+			}
 		}
 	}
 

@@ -78,6 +78,9 @@ func getLinksFromURL(url string) ([]string, error) {
 }
 
 func ensureMetricsURL(url *url.URL) (int, error) {
+	if url == nil {
+		return 0, fmt.Errorf("url was nil")
+	}
 	var netClient = &http.Client{
 		Timeout: time.Second * 10,
 	}

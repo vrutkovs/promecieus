@@ -231,6 +231,7 @@ func (s *ServerSettings) launchPromApp(ctx context.Context, appLabel string, met
 
 func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel string) error {
 	deploymentName := fmt.Sprintf(promAppLabel, appLabel)
+	log.Printf("watching deployment %s", deploymentName)
 	watcher, err := s.K8sClient.AppsV1().Deployments(s.Namespace).Watch(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to fetch deployment: %v", err)
@@ -246,6 +247,7 @@ func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel st
 				log.Printf("invalid object watched: %#v", deployment)
 				continue
 			}
+			log.Printf("deployment status: %#v", deployment.Status)
 			if deployment.Status.AvailableReplicas == 1 {
 				return nil
 			}

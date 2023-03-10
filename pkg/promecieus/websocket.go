@@ -153,7 +153,13 @@ func (s *ServerSettings) createNewPrometheus(ctx context.Context, conn *websocke
 	sendWSMessage(conn, "app-label", appLabel)
 
 	// Fetch metrics.tar path if prow URL specified
-	prowInfo, err := getMetricsTar(conn, rawURL)
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		sendWSMessage(conn, "failure", fmt.Sprintf("Failed to parse url: %s", err.Error()))
+		return
+	}
+
+	prowInfo, err := getMetricsTar(conn, u)
 	if err != nil {
 		sendWSMessage(conn, "failure", fmt.Sprintf("Failed to find metrics archive: %s", err.Error()))
 		return

@@ -18,16 +18,17 @@ import (
 )
 
 const (
-	charset       = "abcdefghijklmnopqrstuvwxyz"
-	randLength    = 8
-	promTemplates = "prom-templates"
-	gcsLinkToken  = "gcsweb"
-	gcsPrefix     = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com"
-	storagePrefix = "https://storage.googleapis.com"
-	artifactsPath = "artifacts"
-	promTarPath   = "metrics/prometheus.tar"
-	extraPath     = "gather-extra"
-	e2ePrefix     = "e2e"
+	charset        = "abcdefghijklmnopqrstuvwxyz"
+	randLength     = 8
+	promTemplates  = "prom-templates"
+	gcsLinkToken   = "gcsweb"
+	gcsPrefix      = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com"
+	storagePrefix  = "https://storage.googleapis.com"
+	artifactsPath  = "artifacts"
+	promTarPath    = "metrics/prometheus.tar"
+	prom2ndTarPath = "metrics/prometheus-k8s-1.tar"
+	extraPath      = "gather-extra"
+	e2ePrefix      = "e2e"
 )
 
 func generateAppLabel() string {
@@ -76,18 +77,21 @@ func getLinksFromURL(url string) ([]string, error) {
 	}
 }
 
-func ensureMetricsURL(url string) (int, error) {
+func ensureMetricsURL(url *url.URL) (int, error) {
+	if url == nil {
+		return 0, fmt.Errorf("url was nil")
+	}
 	var netClient = &http.Client{
 		Timeout: time.Second * 10,
 	}
-	resp, err := netClient.Head(url)
+	resp, err := netClient.Head(url.String())
 	if resp == nil {
 		return 0, err
 	}
 	return resp.StatusCode, err
 }
 
-func getMetricsTar(conn *websocket.Conn, url string) (ProwInfo, error) {
+func getMetricsTar(conn *websocket.Conn, url *url.URL) (ProwInfo, error) {
 	sendWSMessage(conn, "status", fmt.Sprintf("Fetching %s", url))
 	// Ensure initial URL is valid
 	statusCode, err := ensureMetricsURL(url)
@@ -132,13 +136,13 @@ func getMetricsTar(conn *websocket.Conn, url string) (ProwInfo, error) {
 	return prowInfo, nil
 }
 
-func getTarURLFromProw(conn *websocket.Conn, baseURL string) (ProwInfo, error) {
+func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error) {
 	prowInfo := ProwInfo{}
 
 	// Is it a direct prom tarball link?
-	if strings.HasSuffix(baseURL, promTarPath) {
+	if strings.HasSuffix(baseURL.Path, promTarPath) || strings.HasSuffix(baseURL.Path, prom2ndTarPath) {
 		// Make it a fetchable URL if it's a gcsweb URL
-		tempMetricsURL := strings.Replace(baseURL, gcsPrefix+"/gcs", storagePrefix, -1)
+		tempMetricsURL := strings.Replace(baseURL.String(), gcsPrefix+"/gcs", storagePrefix, -1)
 		prowInfo.MetricsURL = tempMetricsURL
 		// there is no way to find out the time via direct tarball link, use current time
 		prowInfo.Finished = time.Now()
@@ -147,7 +151,7 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL string) (ProwInfo, error) {
 	}
 
 	// Get a list of links on prow page
-	prowToplinks, err := getLinksFromURL(baseURL)
+	prowToplinks, err := getLinksFromURL(baseURL.String())
 	if err != nil {
 		return prowInfo, fmt.Errorf("failed to find links at %s: %v", prowToplinks, err)
 	}
@@ -317,7 +321,12 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL string) (ProwInfo, error) {
 		e2eURL = gatherExtraURL
 	}
 
-	gcsMetricsURL := fmt.Sprintf("%s%s", e2eURL.String(), promTarPath)
+	tarFile := promTarPath
+	if baseURL.Query().Has("altsnap") {
+		tarFile = prom2ndTarPath
+	}
+
+	gcsMetricsURL := fmt.Sprintf("%s%s", e2eURL.String(), tarFile)
 	tempMetricsURL := strings.Replace(gcsMetricsURL, gcsPrefix+"/gcs", storagePrefix, -1)
 	expectedMetricsURL, err := url.Parse(tempMetricsURL)
 	if err != nil {

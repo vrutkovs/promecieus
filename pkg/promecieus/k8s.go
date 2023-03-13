@@ -3,11 +3,13 @@ package promecieus
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"math/rand"
+	"net/http"
 	"strings"
 	"time"
 
@@ -227,6 +229,35 @@ func (s *ServerSettings) launchPromApp(ctx context.Context, appLabel string, met
 	}
 
 	return fmt.Sprintf("https://%s", route.Spec.Host), nil
+}
+
+func (s *ServerSettings) waitForEndpointReady(ctx context.Context, promRoute string) error {
+	timer := time.NewTicker(time.Second)
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+	ctx, cancel := context.WithTimeout(ctx, time.Minute*5)
+	defer cancel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timer.C:
+			response, err := client.Get(promRoute + "/-/ready")
+			if err != nil {
+				log.Printf("getting [%v] resulted in err [%v], retrying...", promRoute, err)
+				continue
+			}
+			if response.StatusCode != 200 {
+				log.Printf("getting [%v] returned non-OK status code [%v], retrying...", promRoute, response.StatusCode)
+			} else {
+				log.Printf("prometheus is ready: %v", promRoute)
+				return nil
+			}
+		}
+	}
 }
 
 func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel string) error {

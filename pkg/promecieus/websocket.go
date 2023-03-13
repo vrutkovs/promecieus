@@ -208,6 +208,11 @@ func (s *ServerSettings) createNewPrometheus(ctx context.Context, conn *websocke
 		return
 	}
 
+	if err := s.waitForEndpointReady(ctx, promRoute); err != nil {
+		sendWSMessage(conn, "failure", err.Error())
+		return
+	}
+
 	dsID, err := s.addDataSource(appLabel, promRoute)
 	if err == nil {
 		s.Datasources[appLabel] = dsID

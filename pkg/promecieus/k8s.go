@@ -29,9 +29,14 @@ import (
 const (
 	deploymentRolloutTime = time.Minute
 	deploymentLifetime    = 4 * time.Hour
-	prometheusImage       = "quay.io/prometheus/prometheus:v2.37.0"
-	ciFetcherImage        = "registry.access.redhat.com/ubi8/ubi:8.6"
-	promAppLabel          = "%s-prom"
+	// This is a custom prometheus image to ignore reading corrupted WAL records.
+	// Build instructions are here: https://quay.io/repository/tjungblu/patched-prometheus?tab=info
+	// Code in this branch: https://github.com/tjungblu/prometheus/tree/ignorecheck
+	// For a proper solution, please see: https://github.com/openshift/release/pull/33210
+	// This was based on Prometheus v2.39.1.
+	prometheusImage = "quay.io/tjungblu/patched-prometheus:ignorecheck-e1feeff"
+	ciFetcherImage  = "registry.access.redhat.com/ubi8/ubi:8.6"
+	promAppLabel    = "%s-prom"
 )
 
 var (

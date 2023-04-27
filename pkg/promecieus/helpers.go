@@ -82,7 +82,7 @@ func ensureMetricsURL(url *url.URL) (int, error) {
 		return 0, fmt.Errorf("url was nil")
 	}
 	var netClient = &http.Client{
-		Timeout: time.Second * 10,
+		Timeout: time.Second * 20,
 	}
 	resp, err := netClient.Head(url.String())
 	if resp == nil {

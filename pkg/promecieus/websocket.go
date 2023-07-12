@@ -60,6 +60,8 @@ func sendWSMessageWithData(conn *websocket.Conn, action string, message string, 
 	}
 	if conn != nil {
 		conn.WriteMessage(websocket.TextMessage, responseJSON)
+	} else {
+		klog.Warningf("connection is nil, message: %v", responseJSON)
 	}
 }
 

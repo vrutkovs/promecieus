@@ -272,80 +272,77 @@ func (s *ServerSettings) waitForEndpointReady(ctx context.Context, promRoute str
 func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel string) error {
 	deploymentName := fmt.Sprintf(promAppLabel, appLabel)
 	log.Printf("watching deployment %s", deploymentName)
-	watcher, err := s.K8sClient.AppsV1().Deployments(s.Namespace).Watch(ctx, metav1.ListOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to fetch deployment: %v", err)
+	timeLimitedCtx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+
+	if _, watchErr := watchtools.UntilWithSync(timeLimitedCtx,
+		cache.NewListWatchFromClient(
+			s.K8sClient.AppsV1().RESTClient(), "deployments", s.Namespace, fields.OneTermEqualSelector("metadata.name", deploymentName)),
+		&appsv1.Deployment{},
+		nil,
+		func(event watch.Event) (bool, error) {
+			dep := event.Object.(*appsv1.Deployment)
+			return dep.Status.ReadyReplicas > 0, nil
+		},
+	); watchErr != nil {
+		return s.showFailedDeploymentLogs(ctx, deploymentName, appLabel)
 	}
-	defer watcher.Stop()
+	return nil
+}
 
-	timer := time.NewTimer(deploymentRolloutTime)
-	for {
-		select {
-		case event := <-watcher.ResultChan():
-			deployment, ok := event.Object.(*appsv1.Deployment)
-			if !ok {
-				log.Printf("invalid object watched: %#v", deployment)
-				continue
-			}
-			log.Printf("deployment status: %#v", deployment.Status)
-			if deployment.Status.AvailableReplicas == 1 {
-				return nil
-			}
-		case <-timer.C:
-			log.Printf("timed out waiting for deployment %s to rollout", deploymentName)
-			// Find the pod created by this deployment
-			listOpts := metav1.ListOptions{
-				LabelSelector: fmt.Sprintf("app=%s", appLabel),
-			}
-			podList, err := s.K8sClient.CoreV1().Pods(s.Namespace).List(ctx, listOpts)
-			if err != nil {
-				return fmt.Errorf("error finding pods created by deployment %s: %v, please report this to #forum-crt", deploymentName, err)
-			}
-			if podList.Items == nil || len(podList.Items) < 1 {
-				return fmt.Errorf("failed to list pods created by deployment %s: %#v, please report this to #forum-crt", deploymentName, podList)
-			}
-			pod := podList.Items[0] // We only create one pod
+func (s *ServerSettings) showFailedDeploymentLogs(ctx context.Context, deploymentName string, appLabel string) error {
+	log.Printf("timed out waiting for deployment %s to rollout", deploymentName)
+	// Find the pod created by this deployment
+	listOpts := metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("app=%s", appLabel),
+	}
+	podList, err := s.K8sClient.CoreV1().Pods(s.Namespace).List(ctx, listOpts)
+	if err != nil {
+		return fmt.Errorf("error finding pods created by deployment %s: %v, please report this to #forum-crt", deploymentName, err)
+	}
+	if podList.Items == nil || len(podList.Items) < 1 {
+		return fmt.Errorf("failed to list pods created by deployment %s: %#v, please report this to #forum-crt", deploymentName, podList)
+	}
+	pod := podList.Items[0] // We only create one pod
 
-			// Find the failing container in initContainers or containers
-			failingContainerName := ""
-			for _, initContainerStatus := range pod.Status.InitContainerStatuses {
-				if !initContainerStatus.Ready {
-					failingContainerName = initContainerStatus.Name
-					break
-				}
-			}
-			if failingContainerName == "" {
-				for _, containerStatus := range pod.Status.ContainerStatuses {
-					if !containerStatus.Ready {
-						failingContainerName = containerStatus.Name
-						break
-					}
-				}
-			}
-			if failingContainerName == "" {
-				return fmt.Errorf("failed to find failing container in pod %s created by deployment %s: %v, please report this to #forum-crt", pod.Name, deploymentName, err)
-			}
-
-			// Fetch container logs
-			podLogOptions := corev1.PodLogOptions{
-				Container: failingContainerName,
-				Follow:    false,
-			}
-			req := s.K8sClient.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOptions)
-			podLogs, err := req.Stream(ctx)
-			if err != nil {
-				return fmt.Errorf("error opening stream to fetch failing logs in pod %s created by deployment %s: %v, please report this to #forum-crt", pod.Name, deploymentName, err)
-			}
-			defer podLogs.Close()
-
-			buf := new(bytes.Buffer)
-			_, err = io.Copy(buf, podLogs)
-			if err != nil {
-				return fmt.Errorf("error copying logs in pod %s created by deployment %s: %v, please report this to #forum-crt", pod.Name, deploymentName, err)
-			}
-			return fmt.Errorf("%w:\n%s", ErrorContainerLog, buf.String())
+	// Find the failing container in initContainers or containers
+	failingContainerName := ""
+	for _, initContainerStatus := range pod.Status.InitContainerStatuses {
+		if !initContainerStatus.Ready {
+			failingContainerName = initContainerStatus.Name
+			break
 		}
 	}
+	if failingContainerName == "" {
+		for _, containerStatus := range pod.Status.ContainerStatuses {
+			if !containerStatus.Ready {
+				failingContainerName = containerStatus.Name
+				break
+			}
+		}
+	}
+	if failingContainerName == "" {
+		return fmt.Errorf("failed to find failing container in pod %s created by deployment %s: %v, please report this to #forum-crt", pod.Name, deploymentName, err)
+	}
+
+	// Fetch container logs
+	podLogOptions := corev1.PodLogOptions{
+		Container: failingContainerName,
+		Follow:    false,
+	}
+	req := s.K8sClient.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOptions)
+	podLogs, err := req.Stream(ctx)
+	if err != nil {
+		return fmt.Errorf("error opening stream to fetch failing logs in pod %s created by deployment %s: %v, please report this to #forum-crt", pod.Name, deploymentName, err)
+	}
+	defer podLogs.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, podLogs)
+	if err != nil {
+		return fmt.Errorf("error copying logs in pod %s created by deployment %s: %v, please report this to #forum-crt", pod.Name, deploymentName, err)
+	}
+	return fmt.Errorf("%w:\n%s", ErrorContainerLog, buf.String())
 }
 
 func (s *ServerSettings) deletePods(ctx context.Context, appLabel string) (string, error) {

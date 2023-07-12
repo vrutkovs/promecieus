@@ -213,12 +213,12 @@ func (s *ServerSettings) createNewPrometheus(ctx context.Context, conn *websocke
 		return
 	}
 
-	dsID, err := s.addDataSource(appLabel, promRoute)
-	if err == nil {
-		s.Datasources[appLabel] = dsID
-		sendWSMessage(conn, "status", fmt.Sprintf("Added %s datasource at %s", appLabel, s.Grafana.URL))
-	} else {
-		if s.Grafana.URL != "" && s.Grafana.Token != "" && s.Grafana.Cookie != "" {
+	if s.Grafana.URL != "" && s.Grafana.Token != "" && s.Grafana.Cookie != "" {
+		dsID, err := s.addDataSource(appLabel, promRoute)
+		if err == nil {
+			s.Datasources[appLabel] = dsID
+			sendWSMessage(conn, "status", fmt.Sprintf("Added %s datasource at %s", appLabel, s.Grafana.URL))
+		} else {
 			sendWSMessage(conn, "failure", err.Error())
 		}
 	}
@@ -258,6 +258,7 @@ func (s *ServerSettings) grafanaRequest(method, url string, body io.Reader) (*ht
 }
 
 func (s *ServerSettings) addDataSource(appLabel, promRoute string) (int, error) {
+	log.Printf("adding %s as grafana datasource", promRoute)
 	ds := &GrafanaDatasource{
 		Name:      appLabel,
 		URL:       promRoute,

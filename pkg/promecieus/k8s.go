@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -28,6 +27,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	watchtools "k8s.io/client-go/tools/watch"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -256,13 +256,13 @@ func (s *ServerSettings) waitForEndpointReady(ctx context.Context, promRoute str
 		case <-timer.C:
 			response, err := client.Get(promRoute + "/-/ready")
 			if err != nil {
-				log.Printf("getting [%v] resulted in err [%v], retrying...", promRoute, err)
+				klog.Infof("getting [%v] resulted in err [%v], retrying...", promRoute, err)
 				continue
 			}
 			if response.StatusCode != 200 {
-				log.Printf("getting [%v] returned non-OK status code [%v], retrying...", promRoute, response.StatusCode)
+				klog.Infof("getting [%v] returned non-OK status code [%v], retrying...", promRoute, response.StatusCode)
 			} else {
-				log.Printf("prometheus is ready: %v", promRoute)
+				klog.Infof("prometheus is ready: %v", promRoute)
 				return nil
 			}
 		}
@@ -271,7 +271,7 @@ func (s *ServerSettings) waitForEndpointReady(ctx context.Context, promRoute str
 
 func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel string) error {
 	deploymentName := fmt.Sprintf(promAppLabel, appLabel)
-	log.Printf("watching deployment %s", deploymentName)
+	klog.Infof("watching deployment %s", deploymentName)
 	timeLimitedCtx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 
@@ -291,7 +291,7 @@ func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel st
 }
 
 func (s *ServerSettings) showFailedDeploymentLogs(ctx context.Context, deploymentName string, appLabel string) error {
-	log.Printf("timed out waiting for deployment %s to rollout", deploymentName)
+	klog.Infof("timed out waiting for deployment %s to rollout", deploymentName)
 	// Find the pod created by this deployment
 	listOpts := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("app=%s", appLabel),
@@ -410,7 +410,7 @@ func (s *ServerSettings) deletePods(ctx context.Context, appLabel string) (strin
 
 // CleanupOldDeployements periodically removes old deployments
 func (s *ServerSettings) CleanupOldDeployements(ctx context.Context) {
-	log.Println("Cleaning up old deployments")
+	klog.Infof("Cleaning up old deployments")
 	// List all deployments, find those which are older than n hours and call 'deletePods'
 	depsList, err := s.K8sClient.AppsV1().Deployments(s.Namespace).List(ctx, metav1.ListOptions{})
 	if err != nil || depsList.Items == nil {
@@ -418,20 +418,20 @@ func (s *ServerSettings) CleanupOldDeployements(ctx context.Context) {
 	}
 	now := time.Now()
 	for _, dep := range depsList.Items {
-		log.Printf("Found %s", dep.Name)
+		klog.Infof("Found %s", dep.Name)
 		// Get dep label and create time
 		appLabel, ok := dep.Labels["app"]
 		if !ok {
-			log.Println("Deployment has no appLabel, skipping")
+			klog.Infof("Deployment has no appLabel, skipping")
 			// Deployment has no app label
 			continue
 		}
 		createdAt := dep.GetCreationTimestamp()
 		if now.After(createdAt.Add(deploymentLifetime)) {
-			log.Println("Deployment will be garbage collected")
+			klog.Infof("Deployment will be garbage collected")
 			go s.deletePods(ctx, appLabel)
 		} else {
-			log.Println("Deployment will live see another dawn")
+			klog.Infof("Deployment will live see another dawn")
 		}
 	}
 }
@@ -463,7 +463,7 @@ func (s *ServerSettings) WatchResourceQuota(ctx context.Context) {
 				Used: rquota.Status.Used.Pods().Value(),
 				Hard: rquota.Status.Hard.Pods().Value(),
 			}
-			log.Printf("ResourceQuota update: %v", s.RQStatus)
+			klog.Infof("ResourceQuota update: %v", s.RQStatus)
 			s.sendResourceQuotaUpdate()
 			return true, nil
 		},

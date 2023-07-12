@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"k8s.io/klog/v2"
 )
 
 // WSMessage represents websocket message format
@@ -41,7 +41,7 @@ func sendWSMessage(conn *websocket.Conn, action string, message string) {
 	}
 	responseJSON, err := json.Marshal(response)
 	if err != nil {
-		fmt.Println("Can't serialize", response)
+		klog.Fatalf("Can't serialize %v", response)
 	}
 	if conn != nil {
 		conn.WriteMessage(websocket.TextMessage, responseJSON)
@@ -56,7 +56,7 @@ func sendWSMessageWithData(conn *websocket.Conn, action string, message string, 
 	}
 	responseJSON, err := json.Marshal(response)
 	if err != nil {
-		fmt.Println("Can't serialize", response)
+		klog.Fatalf("Can't serialize %s", response)
 	}
 	if conn != nil {
 		conn.WriteMessage(websocket.TextMessage, responseJSON)
@@ -68,7 +68,7 @@ func (s *ServerSettings) HandleStatusViaWS(c *gin.Context) {
 	conn, err := wsupgrader.Upgrade(c.Writer, c.Request, nil)
 
 	if err != nil {
-		log.Printf("Failed to upgrade ws: %+v", err)
+		klog.Warningf("Failed to upgrade ws: %+v", err)
 		return
 	}
 
@@ -76,25 +76,25 @@ func (s *ServerSettings) HandleStatusViaWS(c *gin.Context) {
 
 	for {
 		t, msg, err := conn.ReadMessage()
-		log.Printf("Got ws message: %s", msg)
+		klog.Infof("Got ws message: %s", msg)
 		if err != nil {
 			if !websocket.IsCloseError(err, 1001, 1006) {
 				s.RemoveWS(conn)
-				log.Printf("Error reading message: %+v", err)
+				klog.Warningf("Error reading message: %+v", err)
 			}
 			break
 		}
 		if t != websocket.TextMessage {
-			log.Printf("Not a text message: %d", t)
+			klog.Warningf("Not a text message: %d", t)
 			continue
 		}
 		var m WSMessage
 		err = json.Unmarshal(msg, &m)
 		if err != nil {
-			log.Printf("Failed to unmarshal message '%+v': %+v", string(msg), err)
+			klog.Warningf("Failed to unmarshal message '%+v': %+v", string(msg), err)
 			continue
 		}
-		log.Printf("WS message: %+v", m)
+		klog.Infof("WS message: %+v", m)
 		switch m.Action {
 		case "connect":
 			s.AddOrUpdateWS(conn)
@@ -125,9 +125,9 @@ func (s *ServerSettings) RemoveWS(conn *websocket.Conn) {
 func (s *ServerSettings) sendResourceQuotaUpdate() {
 	rqsJSON, err := json.Marshal(s.RQStatus)
 	if err != nil {
-		log.Fatalf("Can't serialize %s", err)
+		klog.Fatalf("Can't serialize %s", err)
 	}
-	log.Printf("Sending RQuota update to : %#v", s.Conns)
+	klog.Infof("Sending RQuota update to : %#v", s.Conns)
 	for _, conn := range s.Conns.list {
 		sendWSMessage(conn, "rquota", string(rqsJSON))
 	}
@@ -258,7 +258,7 @@ func (s *ServerSettings) grafanaRequest(method, url string, body io.Reader) (*ht
 }
 
 func (s *ServerSettings) addDataSource(appLabel, promRoute string) (int, error) {
-	log.Printf("adding %s as grafana datasource", promRoute)
+	klog.Infof("adding %s as grafana datasource", promRoute)
 	ds := &GrafanaDatasource{
 		Name:      appLabel,
 		URL:       promRoute,

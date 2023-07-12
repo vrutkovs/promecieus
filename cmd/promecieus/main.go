@@ -2,14 +2,13 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"net/http"
 	"os"
 
 	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/jasonlvhit/gocron"
+	"k8s.io/klog/v2"
 
 	"github.com/vrutkovs/promecieus/pkg/promecieus"
 )
@@ -21,11 +20,11 @@ func health(c *gin.Context) {
 
 func main() {
 	kubeConfigEnvVar := os.Getenv("KUBECONFIG")
+	klog.InitFlags(nil)
 
 	k8sC, routeC, err := promecieus.TryLogin(kubeConfigEnvVar)
 	if err != nil {
-		log.Println("Failed to login in cluster")
-		log.Println(err)
+		klog.Fatalf("Failed to login in cluster: %v", err)
 		return
 	}
 
@@ -62,7 +61,7 @@ func main() {
 
 	ctx := context.Background()
 	if server.GetResourceQuota(ctx) != nil {
-		fmt.Print("Failed to read initial resource quota")
+		klog.Fatalf("Failed to read initial resource quota")
 	} else {
 		go server.WatchResourceQuota(ctx)
 	}

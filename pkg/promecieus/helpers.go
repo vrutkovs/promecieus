@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"golang.org/x/net/html"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -160,7 +160,7 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error)
 	}
 	gcsTempURL := ""
 	for _, link := range prowToplinks {
-		log.Printf("link: %s", link)
+		klog.Infof("link: %s", link)
 		if strings.Contains(link, gcsLinkToken) {
 			gcsTempURL = link
 			break
@@ -224,13 +224,13 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error)
 	}
 	tmpE2eURL := ""
 	for _, link := range artifactLinksToplinks {
-		log.Printf("link: %s", link)
+		klog.Infof("link: %s", link)
 		linkSplitBySlash := strings.Split(link, "/")
 		lastPathSegment := linkSplitBySlash[len(linkSplitBySlash)-1]
 		if len(lastPathSegment) == 0 {
 			lastPathSegment = linkSplitBySlash[len(linkSplitBySlash)-2]
 		}
-		log.Printf("lastPathSection: %s", lastPathSegment)
+		klog.Infof("lastPathSection: %s", lastPathSegment)
 		if strings.Contains(lastPathSegment, e2ePrefix) {
 			tmpE2eURL = gcsPrefix + link
 			break
@@ -257,13 +257,13 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error)
 
 	var candidates []*url.URL
 	for _, link := range e2eToplinks {
-		log.Printf("link: %s", link)
+		klog.Infof("link: %s", link)
 		linkSplitBySlash := strings.Split(link, "/")
 		lastPathSegment := linkSplitBySlash[len(linkSplitBySlash)-1]
 		if len(lastPathSegment) == 0 {
 			lastPathSegment = linkSplitBySlash[len(linkSplitBySlash)-2]
 		}
-		log.Printf("lastPathSection: %s", lastPathSegment)
+		klog.Infof("lastPathSection: %s", lastPathSegment)
 		switch lastPathSegment {
 		case "artifacts":
 			continue
@@ -302,13 +302,13 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error)
 			return prowInfo, fmt.Errorf("no top links at %s found", e2eURL)
 		}
 		for _, link := range e2eToplinks {
-			log.Printf("link: %s", link)
+			klog.Infof("link: %s", link)
 			linkSplitBySlash := strings.Split(link, "/")
 			lastPathSegment := linkSplitBySlash[len(linkSplitBySlash)-1]
 			if len(lastPathSegment) == 0 {
 				lastPathSegment = linkSplitBySlash[len(linkSplitBySlash)-2]
 			}
-			log.Printf("lastPathSection: %s", lastPathSegment)
+			klog.Infof("lastPathSection: %s", lastPathSegment)
 			if lastPathSegment == artifactsPath {
 				tmpGatherExtraURL := gcsPrefix + link
 				gatherExtraURL, err = url.Parse(tmpGatherExtraURL)

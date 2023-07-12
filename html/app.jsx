@@ -424,6 +424,7 @@ class SearchForm extends React.Component {
     }
 
     componentDidMount() {
+        window.addEventListener("beforeunload", this.onUnload);
         this.check();
         this.timeout = 0;
         if (!this.state.searchInput) {
@@ -435,6 +436,16 @@ class SearchForm extends React.Component {
                 this.search(searchInput);
             }
         }
+    }
+    onUnload() {
+       if (this.state.ws) {
+            console.log("Closing socket");
+            this.state.ws.close();
+        }
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener("beforeunload", this.onUnload);
     }
 
     render() {

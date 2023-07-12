@@ -20,10 +20,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/watch"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	watchtools "k8s.io/client-go/tools/watch"
 )
 
 const (
@@ -451,26 +455,20 @@ func (s *ServerSettings) GetResourceQuota(ctx context.Context) error {
 
 // WatchResourceQuota passes RQ updates from k8s to UI
 func (s *ServerSettings) WatchResourceQuota(ctx context.Context) {
-	for {
-		// TODO: Make sure we watch correct resourceQuota
-		watcher, err := s.K8sClient.CoreV1().ResourceQuotas(s.Namespace).Watch(ctx, metav1.ListOptions{})
-		if err != nil {
-			log.Printf("Failed to setup ResourceQuota watcher: %v", err)
-			continue
-		}
-		ch := watcher.ResultChan()
-		for event := range ch {
-			rq, ok := event.Object.(*corev1.ResourceQuota)
-			if !ok || rq.Name != s.RQuotaName {
-				log.Printf("Skipping rq update: %v, %s", ok, rq.Name)
-				continue
-			}
+	watchtools.UntilWithSync(ctx,
+		cache.NewListWatchFromClient(
+			s.K8sClient.AppsV1().RESTClient(), "resourcequotas", s.Namespace, fields.OneTermEqualSelector("metadata.name", s.RQuotaName)),
+		&corev1.ResourceQuota{},
+		nil,
+		func(event watch.Event) (bool, error) {
+			rquota := event.Object.(*corev1.ResourceQuota)
 			s.RQStatus = &RQuotaStatus{
-				Used: rq.Status.Used.Pods().Value(),
-				Hard: rq.Status.Hard.Pods().Value(),
+				Used: rquota.Status.Used.Pods().Value(),
+				Hard: rquota.Status.Hard.Pods().Value(),
 			}
 			log.Printf("ResourceQuota update: %v", s.RQStatus)
 			s.sendResourceQuotaUpdate()
-		}
-	}
+			return true, nil
+		},
+	)
 }

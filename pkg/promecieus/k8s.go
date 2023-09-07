@@ -454,7 +454,7 @@ func (s *ServerSettings) GetResourceQuota(ctx context.Context) error {
 func (s *ServerSettings) WatchResourceQuota(ctx context.Context) {
 	watchtools.UntilWithSync(ctx,
 		cache.NewListWatchFromClient(
-			s.K8sClient.AppsV1().RESTClient(), "resourcequotas", s.Namespace, fields.OneTermEqualSelector("metadata.name", s.RQuotaName)),
+			s.K8sClient.CoreV1().RESTClient(), "resourcequotas", s.Namespace, fields.OneTermEqualSelector("metadata.name", s.RQuotaName)),
 		&corev1.ResourceQuota{},
 		nil,
 		func(event watch.Event) (bool, error) {

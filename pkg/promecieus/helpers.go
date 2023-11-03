@@ -18,17 +18,18 @@ import (
 )
 
 const (
-	charset        = "abcdefghijklmnopqrstuvwxyz"
-	randLength     = 8
-	promTemplates  = "prom-templates"
-	gcsLinkToken   = "gcsweb"
-	gcsPrefix      = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com"
-	storagePrefix  = "https://storage.googleapis.com"
-	artifactsPath  = "artifacts"
-	promTarPath    = "metrics/prometheus.tar"
-	prom2ndTarPath = "metrics/prometheus-k8s-1.tar"
-	extraPath      = "gather-extra"
-	e2ePrefix      = "e2e"
+	charset             = "abcdefghijklmnopqrstuvwxyz"
+	randLength          = 8
+	promTemplates       = "prom-templates"
+	gcsLinkToken        = "gcsweb"
+	gcsPrefix           = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com"
+	storagePrefix       = "https://storage.googleapis.com"
+	artifactsPath       = "artifacts"
+	promTarPath         = "metrics/prometheus.tar"
+	prom2ndTarPath      = "metrics/prometheus-k8s-1.tar"
+	extraPath           = "gather-extra"
+	hypershiftExtraPath = "hypershift-dump-extra"
+	e2ePrefix           = "e2e"
 )
 
 func generateAppLabel() string {
@@ -285,7 +286,8 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error)
 		gatherExtraURL = candidates[0]
 	default:
 		for _, u := range candidates {
-			if path.Base(u.Path) == extraPath {
+			base := path.Base(u.Path)
+			if base == extraPath || base == hypershiftExtraPath {
 				gatherExtraURL = u
 				break
 			}

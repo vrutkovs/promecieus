@@ -78,28 +78,9 @@ func getLinksFromURL(url string) ([]string, error) {
 	}
 }
 
-func ensureMetricsURL(url *url.URL) (int, error) {
-	if url == nil {
-		return 0, fmt.Errorf("url was nil")
-	}
-	var netClient = &http.Client{
-		Timeout: time.Second * 10,
-	}
-	resp, err := netClient.Head(url.String())
-	if resp == nil {
-		return 0, err
-	}
-	return resp.StatusCode, err
-}
-
 func getMetricsTar(conn *websocket.Conn, url *url.URL) (ProwInfo, error) {
 	sendWSMessage(conn, "status", fmt.Sprintf("Fetching %s", url))
-	// Ensure initial URL is valid
-	statusCode, err := ensureMetricsURL(url)
-	if err != nil || statusCode != http.StatusOK {
-		return ProwInfo{}, fmt.Errorf("failed to fetch url %s: code %d, %s", url, statusCode, err)
-	}
-
+	
 	prowInfo, err := getTarURLFromProw(conn, url)
 	if err != nil {
 		return prowInfo, err

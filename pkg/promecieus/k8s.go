@@ -34,9 +34,10 @@ const (
 	deploymentLifetime    = 4 * time.Hour
 	// This is a custom prometheus image to ignore reading corrupted WAL records.
 	// Code in this branch: https://github.com/machine424/prometheus/commit/641689f88a92fe5ce0ac208da2f5b4a93fbd264d
-	prometheusImage = "quay.io/amrini/prometheus:v3.0.1-loosen"
-	ciFetcherImage  = "registry.access.redhat.com/ubi8/ubi:8.6"
-	promAppLabel    = "%s-prom"
+	prometheusImage   = "quay.io/amrini/prometheus:v3.0.1-loosen"
+	ciFetcherImage    = "registry.access.redhat.com/ubi8/ubi:8.6"
+	promAppLabel      = "%s-prom"
+	promContainerName = "prometheus"
 )
 
 var (
@@ -125,7 +126,7 @@ func (s *ServerSettings) launchPromApp(ctx context.Context, appLabel string, met
 					},
 					Containers: []corev1.Container{
 						{
-							Name:  "prometheus",
+							Name:  promContainerName,
 							Image: prometheusImage,
 							Ports: []corev1.ContainerPort{
 								{
@@ -298,24 +299,13 @@ func (s *ServerSettings) showFailedDeploymentLogs(ctx context.Context, deploymen
 	}
 	pod := podList.Items[0] // We only create one pod
 
-	// Find the failing container in initContainers or containers
-	failingContainerName := ""
+	// Show prometheus log unless there is a failing initcontainer
+	failingContainerName := promContainerName
 	for _, initContainerStatus := range pod.Status.InitContainerStatuses {
 		if !initContainerStatus.Ready {
 			failingContainerName = initContainerStatus.Name
 			break
 		}
-	}
-	if failingContainerName == "" {
-		for _, containerStatus := range pod.Status.ContainerStatuses {
-			if !containerStatus.Ready {
-				failingContainerName = containerStatus.Name
-				break
-			}
-		}
-	}
-	if failingContainerName == "" {
-		return fmt.Errorf("failed to find failing container in pod %s created by deployment %s: %v, please report this to #forum-crt", pod.Name, deploymentName, err)
 	}
 
 	// Fetch container logs

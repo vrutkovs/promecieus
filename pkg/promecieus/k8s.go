@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -57,9 +56,6 @@ func TryLogin(kubeconfigPath string) (*k8s.Clientset, *routeClient.RouteV1Client
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// Seed random
-	rand.Seed(time.Now().Unix())
 
 	// creates the clientset
 	k8sClient, err := k8s.NewForConfig(config)

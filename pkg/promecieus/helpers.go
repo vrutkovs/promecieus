@@ -3,7 +3,7 @@ package promecieus
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -334,7 +334,7 @@ func getTimeStampFromProwJSON(rawURL string) (time.Time, error) {
 	}
 	defer resp.Body.Close()
 
-	body, readErr := ioutil.ReadAll(resp.Body)
+	body, readErr := io.ReadAll(resp.Body)
 	if readErr != nil {
 		return time.Now(), fmt.Errorf("failed to read body at %s: %v", jsonURL.String(), err)
 	}

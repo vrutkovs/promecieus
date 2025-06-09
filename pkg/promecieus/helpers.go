@@ -80,7 +80,7 @@ func getLinksFromURL(url string) ([]string, error) {
 
 func getMetricsTar(conn *websocket.Conn, url *url.URL) (ProwInfo, error) {
 	sendWSMessage(conn, "status", fmt.Sprintf("Fetching %s", url))
-	
+
 	prowInfo, err := getTarURLFromProw(conn, url)
 	if err != nil {
 		return prowInfo, err
@@ -167,7 +167,7 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error)
 
 	finishedTime, err := getTimeStampFromProwJSON(fmt.Sprintf("%s/finished.json", gcsURL))
 	if err != nil {
-		return prowInfo, fmt.Errorf("failed to fetch test finshed time: %v", err)
+		return prowInfo, fmt.Errorf("failed to fetch test finished time: %v", err)
 	}
 	prowInfo.Finished = finishedTime
 

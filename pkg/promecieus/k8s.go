@@ -344,7 +344,7 @@ func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel st
 			if n > 0 {
 				logLine := strings.TrimSpace(string(buf[:n]))
 				if logLine != "" && conn != nil {
-					sendWSMessage(conn, "progress", logLine)
+					sendWSMessage(conn, "log", logLine)
 				}
 			}
 			if err != nil {

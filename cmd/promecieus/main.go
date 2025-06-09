@@ -6,6 +6,9 @@ import (
 	"os"
 	"time"
 
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
+
 	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/jasonlvhit/gocron"
@@ -86,13 +89,14 @@ func main() {
 		<-gocron.Start()
 	}()
 
+	h2s := &http2.Server{}
+
 	s := &http.Server{
 		Addr:           ":8080",
-		Handler:        r,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
+		Handler:        h2c.NewHandler(r, h2s),
 	}
-	s.SetKeepAlivesEnabled(false)
 	s.ListenAndServe()
 }

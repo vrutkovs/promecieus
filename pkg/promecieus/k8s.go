@@ -36,7 +36,7 @@ const (
 	// This is a custom prometheus image to ignore reading corrupted WAL records.
 	// Code in this branch: https://github.com/machine424/prometheus/commit/641689f88a92fe5ce0ac208da2f5b4a93fbd264d
 	prometheusImage       = "quay.io/amrini/prometheus:v3.0.1-loosen"
-	ciFetcherImage        = "registry.access.redhat.com/ubi8/ubi:8.6"
+	ciFetcherImage        = "registry.access.redhat.com/ubi10/ubi:10.0"
 	promAppLabel          = "%s-prom"
 	promContainerName     = "prometheus"
 	promInitContainerName = "ci-fetcher"
@@ -109,7 +109,7 @@ func (s *ServerSettings) launchPromApp(ctx context.Context, appLabel string, met
 							Command: []string{
 								"/bin/bash",
 								"-c",
-								"set -uxo pipefail && umask 0000 && curl -sL ${PROMTAR} | tar xvz -m --no-overwrite-dir",
+								"set -uxo pipefail && umask 0000 && curl -sL ${PROMTAR} | tar xvz --exclude=. -m --no-overwrite-dir",
 							},
 							WorkingDir: "/prometheus/",
 							Env: []corev1.EnvVar{

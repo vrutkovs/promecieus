@@ -31,6 +31,10 @@ type ContainerLogError struct {
 var wsupgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		// Allow all connections
+		return true
+	},
 }
 
 func sendWSMessage(conn *websocket.Conn, action string, message string) {

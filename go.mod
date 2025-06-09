@@ -7,7 +7,7 @@ toolchain go1.24.3
 require (
 	github.com/gin-gonic/contrib v0.0.0-20221130124618-7e01895a63f2
 	github.com/gin-gonic/gin v1.10.1
-	github.com/gorilla/websocket v1.5.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/jasonlvhit/gocron v0.0.1
 	github.com/openshift/api v0.0.0-20230712083008-4cd78a947207
 	github.com/openshift/client-go v0.0.0-20230705133330-7f808ad59404

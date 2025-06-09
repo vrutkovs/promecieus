@@ -265,7 +265,7 @@ func (s *ServerSettings) waitForEndpointReady(ctx context.Context, promRoute str
 func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel string) error {
 	deploymentName := fmt.Sprintf(promAppLabel, appLabel)
 	klog.Infof("watching deployment %s", deploymentName)
-	timeLimitedCtx, cancel := context.WithTimeout(ctx, time.Minute)
+	timeLimitedCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
 	if _, watchErr := watchtools.UntilWithSync(timeLimitedCtx,

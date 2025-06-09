@@ -98,7 +98,7 @@ class Message extends React.Component {
       case "link":
         return (
           <ReactBootstrap.Alert className="alert-small" variant="primary">
-            <ReactBootstrap.Alert.Link href={this.props.message}>
+            <ReactBootstrap.Alert.Link href={this.props.message} target="_blank">
               {this.props.message}
             </ReactBootstrap.Alert.Link>
           </ReactBootstrap.Alert>

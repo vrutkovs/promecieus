@@ -93,5 +93,6 @@ func main() {
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
+	s.SetKeepAlivesEnabled(false)
 	s.ListenAndServe()
 }

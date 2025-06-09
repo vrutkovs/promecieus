@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/websocket"
 	routeApi "github.com/openshift/api/route/v1"
 	routeClient "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 
@@ -34,10 +35,11 @@ const (
 	deploymentLifetime    = 4 * time.Hour
 	// This is a custom prometheus image to ignore reading corrupted WAL records.
 	// Code in this branch: https://github.com/machine424/prometheus/commit/641689f88a92fe5ce0ac208da2f5b4a93fbd264d
-	prometheusImage   = "quay.io/amrini/prometheus:v3.0.1-loosen"
-	ciFetcherImage    = "registry.access.redhat.com/ubi8/ubi:8.6"
-	promAppLabel      = "%s-prom"
-	promContainerName = "prometheus"
+	prometheusImage       = "quay.io/amrini/prometheus:v3.0.1-loosen"
+	ciFetcherImage        = "registry.access.redhat.com/ubi8/ubi:8.6"
+	promAppLabel          = "%s-prom"
+	promContainerName     = "prometheus"
+	promInitContainerName = "ci-fetcher"
 )
 
 var (
@@ -102,7 +104,7 @@ func (s *ServerSettings) launchPromApp(ctx context.Context, appLabel string, met
 				Spec: corev1.PodSpec{
 					InitContainers: []corev1.Container{
 						{
-							Name:  "ci-fetcher",
+							Name:  promInitContainerName,
 							Image: ciFetcherImage,
 							Command: []string{
 								"/bin/bash",
@@ -263,9 +265,9 @@ func (s *ServerSettings) waitForEndpointReady(ctx context.Context, promRoute str
 	}
 }
 
-func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel string) error {
+func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel string, conn *websocket.Conn) error {
 	deploymentName := fmt.Sprintf(promAppLabel, appLabel)
-	klog.Infof("watching deployment %s", deploymentName)
+	klog.Infof("waiting for deployment %s to create pods", deploymentName)
 	timeLimitedCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
@@ -276,12 +278,84 @@ func (s *ServerSettings) waitForDeploymentReady(ctx context.Context, appLabel st
 		nil,
 		func(event watch.Event) (bool, error) {
 			dep := event.Object.(*appsv1.Deployment)
-			return dep.Status.ReadyReplicas > 0, nil
+			return dep.Status.Replicas > 0, nil
 		},
 	); watchErr != nil {
 		return s.showFailedDeploymentLogs(ctx, deploymentName, appLabel)
 	}
-	return nil
+
+	// Find the pod created by this deployment
+	listOpts := metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("app=%s", appLabel),
+	}
+	podList, err := s.K8sClient.CoreV1().Pods(s.Namespace).List(ctx, listOpts)
+	if err != nil {
+		return fmt.Errorf("error finding pods created by deployment %s: %v, please report this to #forum-crt", deploymentName, err)
+	}
+	if podList.Items == nil || len(podList.Items) < 1 {
+		return fmt.Errorf("failed to list pods created by deployment %s: %#v, please report this to #forum-crt", deploymentName, podList)
+	}
+	pod := podList.Items[0] // We only create one pod
+
+	klog.Infof("waiting for pod %s to start initialization", pod.Name)
+
+	// Wait for pod to start running
+	if _, watchErr := watchtools.UntilWithSync(timeLimitedCtx,
+		cache.NewListWatchFromClient(
+			s.K8sClient.CoreV1().RESTClient(), "pods", s.Namespace, fields.OneTermEqualSelector("metadata.name", pod.Name)),
+		&corev1.Pod{},
+		nil,
+		func(event watch.Event) (bool, error) {
+			pod := event.Object.(*corev1.Pod)
+			if pod.Status.InitContainerStatuses == nil {
+				return false, nil
+			}
+			if pod.Status.InitContainerStatuses[0].Started == nil {
+				return false, nil
+			}
+			return *pod.Status.InitContainerStatuses[0].Started, nil
+		},
+	); watchErr != nil {
+		return s.showFailedDeploymentLogs(ctx, deploymentName, appLabel)
+	}
+
+	klog.Infof("streaming logs for pod %s", pod.Name)
+
+	// Stream init container logs continuously until container finishes
+	podLogOptions := corev1.PodLogOptions{
+		Container: promInitContainerName,
+		Follow:    true,
+	}
+	req := s.K8sClient.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOptions)
+	podLogs, err := req.Stream(ctx)
+	if err != nil {
+		return fmt.Errorf("error opening stream to fetch failing logs in pod %s created by deployment %s: %v, please report this to #forum-crt", pod.Name, deploymentName, err)
+	}
+	defer podLogs.Close()
+
+	// Read logs continuously until container finishes
+	buf := make([]byte, 1024)
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			n, err := podLogs.Read(buf)
+			if n > 0 {
+				logLine := strings.TrimSpace(string(buf[:n]))
+				if logLine != "" && conn != nil {
+					sendWSMessage(conn, "progress", logLine)
+				}
+			}
+			if err != nil {
+				if err == io.EOF {
+					// Container finished, logs ended
+					return nil
+				}
+				return fmt.Errorf("error reading logs from pod %s created by deployment %s: %v, please report this to #forum-crt", pod.Name, deploymentName, err)
+			}
+		}
+	}
 }
 
 func (s *ServerSettings) showFailedDeploymentLogs(ctx context.Context, deploymentName string, appLabel string) error {

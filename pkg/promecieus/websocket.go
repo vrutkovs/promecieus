@@ -47,23 +47,6 @@ func sendWSMessage(conn *websocket.Conn, action string, message string) {
 	}
 }
 
-func sendWSMessageWithData(conn *websocket.Conn, action string, message string, data map[string]string) {
-	response := WSMessage{
-		Action:  action,
-		Message: message,
-		Data:    data,
-	}
-	responseJSON, err := json.Marshal(response)
-	if err != nil {
-		klog.Fatalf("Can't serialize %s", response)
-	}
-	if conn != nil {
-		conn.WriteMessage(websocket.TextMessage, responseJSON)
-	} else {
-		klog.Warningf("connection is nil, message: %v", responseJSON)
-	}
-}
-
 // HandleStatusViaWS reads websocket events and runs actions
 func (s *ServerSettings) HandleStatusViaWS(c *gin.Context) {
 	conn, err := wsupgrader.Upgrade(c.Writer, c.Request, nil)
@@ -199,8 +182,8 @@ func (s *ServerSettings) createNewPrometheus(ctx context.Context, conn *websocke
 	hackedPrometheusURL := fmt.Sprintf("%s/graph?g0.expr=up&%s", promRoute, params.Encode())
 	sendWSMessage(conn, "link", hackedPrometheusURL)
 
-	sendWSMessage(conn, "progress", "Waiting for pods to become ready")
-	if err := s.waitForDeploymentReady(ctx, appLabel); err != nil {
+	sendWSMessage(conn, "progress", "Waiting for pods to be created")
+	if err := s.waitForDeploymentReady(ctx, appLabel, conn); err != nil {
 		if errors.Is(err, ErrorContainerLog) {
 			sendWSMessage(conn, "error", err.Error())
 		} else {
@@ -223,11 +206,7 @@ func (s *ServerSettings) createNewPrometheus(ctx context.Context, conn *websocke
 			sendWSMessage(conn, "failure", err.Error())
 		}
 	}
-	data := map[string]string{
-		"hash": appLabel,
-		"url":  hackedPrometheusURL,
-	}
-	sendWSMessageWithData(conn, "done", "Pod is ready", data)
+	sendWSMessage(conn, "done", "Pod is ready")
 }
 
 // GrafanaDatasource represents a datasource to be created

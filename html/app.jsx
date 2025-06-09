@@ -109,12 +109,7 @@ class Message extends React.Component {
             <pre>{this.props.message}</pre>
           </ReactBootstrap.Alert>
         );
-      case "log":
-        return (
-          <ReactBootstrap.Alert className="alert-small" variant="secondary">
-            <pre>{this.props.message}</pre>
-          </ReactBootstrap.Alert>
-        );
+
       default:
         return <span></span>;
     }
@@ -136,6 +131,19 @@ class ResourceQuotaStatus extends React.Component {
         <div>Current resource quota</div>
         <ReactBootstrap.ProgressBar now={used} max={hard} label={used + "/" + hard} />
       </div>
+    );
+  }
+}
+
+class LogDisplay extends React.Component {
+  render() {
+    if (!this.props.logContent) {
+      return <span></span>;
+    }
+    return (
+      <ReactBootstrap.Alert className="alert-small" variant="secondary">
+        <pre>{this.props.logContent}</pre>
+      </ReactBootstrap.Alert>
     );
   }
 }
@@ -205,6 +213,7 @@ class SearchForm extends React.Component {
       searchInput: "",
       snapshotToggle: false,
       messages: [],
+      logContent: "",
       appName: null,
       apps: storage.getData(),
       ws: null,
@@ -310,16 +319,23 @@ class SearchForm extends React.Component {
   }
 
   addMessage(message) {
+    if (message.action === "log") {
+      this.setState((state) => ({
+        logContent: state.logContent + message.message + "\n",
+      }));
+      return;
+    }
+
     this.setState((state) => ({ messages: [...state.messages, message] }));
     if (message.action === "app-label") {
-      this.setState((_state) => ({ appName: message.message }));
+      this.setState((_state) => ({ appName: message.message, logContent: "" }));
     }
     if (message.action === "done" || message.action === "error" || message.action === "failure") {
       // Remove message with progress from the list
       let newMessages = this.state.messages.filter(function (message) {
         return message.action != "progress";
       });
-      this.setState((_state) => ({ messages: newMessages }));
+      this.setState((_state) => ({ messages: newMessages, logContent: "" }));
       if (message.data != null) {
         storage.addInstance(message.data.hash, message.data.url);
       }
@@ -354,6 +370,9 @@ class SearchForm extends React.Component {
     var ws = new WebSocket(ws_uri);
     let that = this;
     var connectInterval;
+    const maxReconnectDelay = 10; // 10 seconds
+    const timeoutInSeconds = (that.timeout * 2) / 1000;
+    const reconnectDelay = Math.min(maxReconnectDelay, timeoutInSeconds);
 
     // websocket onopen event listener
     ws.onopen = () => {
@@ -371,8 +390,8 @@ class SearchForm extends React.Component {
     };
 
     // websocket onclose event listener
-    ws.onclose = (e) => {
-      console.log(`Socket is closed. Reconnect will be attempted in ${Math.min(10000 / 1000, (that.timeout + that.timeout) / 1000)} second.`, e.reason);
+    ws.onclose = (_e) => {
+      console.log(`Socket is closed. Reconnect will be attempted in ${reconnectDelay} seconds.`);
 
       that.timeout = that.timeout + that.timeout; //increment retry interval
       connectInterval = setTimeout(this.check, Math.min(10000, that.timeout)); //call check function after timeout
@@ -450,6 +469,7 @@ class SearchForm extends React.Component {
         </ReactBootstrap.Row>
         <br />
         {messages}
+        <LogDisplay logContent={this.state.logContent} />
         <AppsList
           currentApp={this.state.appName}
           apps={this.state.apps}

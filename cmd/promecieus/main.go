@@ -60,8 +60,8 @@ func main() {
 	}
 
 	ctx := context.Background()
-	if server.GetResourceQuota(ctx) != nil {
-		klog.Fatalf("Failed to read initial resource quota")
+	if err := server.GetResourceQuota(ctx); err != nil {
+		klog.Fatalf("Failed to read initial resource quota: %v", err)
 	} else {
 		go server.WatchResourceQuota(ctx)
 	}

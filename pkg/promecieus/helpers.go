@@ -21,9 +21,6 @@ const (
 	charset             = "abcdefghijklmnopqrstuvwxyz"
 	randLength          = 8
 	promTemplates       = "prom-templates"
-	gcsLinkToken        = "gcsweb"
-	gcsPrefix           = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com"
-	storagePrefix       = "https://storage.googleapis.com"
 	artifactsPath       = "artifacts"
 	promTarPath         = "metrics/prometheus.tar.gz"
 	promTarLegacyPath   = "metrics/prometheus.tar"
@@ -32,6 +29,21 @@ const (
 	hypershiftExtraPath = "hypershift-dump-extra"
 	e2ePrefix           = "e2e"
 )
+
+func isGCSBrowserURL(rawURL string) bool {
+	parsedURL, err := url.Parse(rawURL)
+	return err == nil && strings.Contains(parsedURL.Host, "gcs") && strings.HasPrefix(parsedURL.Path, "/gcs/")
+}
+
+func gcsBrowserToStorageURL(browserURL *url.URL) *url.URL {
+	storageURL := *browserURL
+	if strings.HasPrefix(storageURL.Path, "/gcs/") {
+		storageURL.Host = "storage.googleapis.com"
+		storageURL.Path = strings.TrimPrefix(storageURL.Path, "/gcs")
+		storageURL.RawPath = ""
+	}
+	return &storageURL
+}
 
 func generateAppLabel() string {
 	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -143,9 +155,8 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error)
 
 	// Is it a direct prom tarball link?
 	if strings.HasSuffix(baseURL.Path, promTarPath) || strings.HasSuffix(baseURL.Path, promTarLegacyPath) || strings.HasSuffix(baseURL.Path, prom2ndTarPath) {
-		// Make it a fetchable URL if it's a gcsweb URL
-		tempMetricsURL := strings.Replace(baseURL.String(), gcsPrefix+"/gcs", storagePrefix, -1)
-		prowInfo.MetricsURL = tempMetricsURL
+		// Convert a GCS browser URL to a direct storage URL when needed.
+		prowInfo.MetricsURL = gcsBrowserToStorageURL(baseURL).String()
 		// there is no way to find out the time via direct tarball link, use current time
 		prowInfo.Finished = time.Now()
 		prowInfo.Started = time.Now()
@@ -163,7 +174,7 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error)
 	gcsTempURL := ""
 	for _, link := range prowToplinks {
 		klog.Infof("link: %s", link)
-		if strings.Contains(link, gcsLinkToken) {
+		if isGCSBrowserURL(link) {
 			gcsTempURL = link
 			break
 		}
@@ -201,19 +212,18 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error)
 	if len(gcsToplinks) == 0 {
 		return prowInfo, fmt.Errorf("no top-level GCS links at %s found", gcsURL)
 	}
-	tmpArtifactsURL := ""
+	var artifactsURL *url.URL
 	for _, link := range gcsToplinks {
 		if strings.HasSuffix(link, "artifacts/") {
-			tmpArtifactsURL = gcsPrefix + link
+			artifactsURL, err = gcsURL.Parse(link)
+			if err != nil {
+				return prowInfo, fmt.Errorf("failed to parse artifacts link %s: %v", link, err)
+			}
 			break
 		}
 	}
-	if tmpArtifactsURL == "" {
+	if artifactsURL == nil {
 		return prowInfo, fmt.Errorf("failed to find artifacts link in %v", gcsToplinks)
-	}
-	artifactsURL, err := url.Parse(tmpArtifactsURL)
-	if err != nil {
-		return prowInfo, fmt.Errorf("failed to parse artifacts link %s: %v", tmpArtifactsURL, err)
 	}
 
 	// Get a list of folders in find ones which contain e2e
@@ -224,7 +234,7 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error)
 	if len(artifactLinksToplinks) == 0 {
 		return prowInfo, fmt.Errorf("no artifact links at %s found", gcsURL)
 	}
-	tmpE2eURL := ""
+	var e2eURL *url.URL
 	for _, link := range artifactLinksToplinks {
 		klog.Infof("link: %s", link)
 		linkSplitBySlash := strings.Split(link, "/")
@@ -234,16 +244,15 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error)
 		}
 		klog.Infof("lastPathSection: %s", lastPathSegment)
 		if strings.Contains(lastPathSegment, e2ePrefix) {
-			tmpE2eURL = gcsPrefix + link
+			e2eURL, err = artifactsURL.Parse(link)
+			if err != nil {
+				return prowInfo, fmt.Errorf("failed to parse e2e link %s: %v", link, err)
+			}
 			break
 		}
 	}
-	if tmpE2eURL == "" {
+	if e2eURL == nil {
 		return prowInfo, fmt.Errorf("failed to find e2e link in %v", artifactLinksToplinks)
-	}
-	e2eURL, err := url.Parse(tmpE2eURL)
-	if err != nil {
-		return prowInfo, fmt.Errorf("failed to parse e2e link %s: %v", tmpE2eURL, err)
 	}
 
 	// Support new-style jobs - look for gather-extra
@@ -272,9 +281,9 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error)
 		case "gsutil":
 			continue
 		default:
-			u, err := url.Parse(gcsPrefix + link)
+			u, err := e2eURL.Parse(link)
 			if err != nil {
-				return prowInfo, fmt.Errorf("failed to parse e2e link %s: %v", tmpE2eURL, err)
+				return prowInfo, fmt.Errorf("failed to parse e2e link %s: %v", link, err)
 			}
 			candidates = append(candidates, u)
 		}
@@ -313,10 +322,9 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error)
 			}
 			klog.Infof("lastPathSection: %s", lastPathSegment)
 			if lastPathSegment == artifactsPath {
-				tmpGatherExtraURL := gcsPrefix + link
-				gatherExtraURL, err = url.Parse(tmpGatherExtraURL)
+				gatherExtraURL, err = gatherExtraURL.Parse(link)
 				if err != nil {
-					return prowInfo, fmt.Errorf("failed to parse e2e link %s: %v", tmpE2eURL, err)
+					return prowInfo, fmt.Errorf("failed to parse gather-extra artifacts link %s: %v", link, err)
 				}
 				break
 			}
@@ -329,13 +337,12 @@ func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error)
 		tarFile = prom2ndTarPath
 	}
 
-	gcsMetricsURL := fmt.Sprintf("%s%s", e2eURL.String(), tarFile)
-	tempMetricsURL := strings.Replace(gcsMetricsURL, gcsPrefix+"/gcs", storagePrefix, -1)
-	expectedMetricsURL, err := url.Parse(tempMetricsURL)
+	metricsLink := fmt.Sprintf("%s%s", e2eURL.String(), tarFile)
+	gcsMetricsURL, err := url.Parse(metricsLink)
 	if err != nil {
-		return prowInfo, fmt.Errorf("failed to parse metrics link %s: %v", tempMetricsURL, err)
+		return prowInfo, fmt.Errorf("failed to parse metrics link %s: %v", metricsLink, err)
 	}
-	prowInfo.MetricsURL = expectedMetricsURL.String()
+	prowInfo.MetricsURL = gcsBrowserToStorageURL(gcsMetricsURL).String()
 	return prowInfo, nil
 }
 

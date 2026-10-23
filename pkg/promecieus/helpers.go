@@ -25,7 +25,8 @@ const (
 	gcsPrefix           = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com"
 	storagePrefix       = "https://storage.googleapis.com"
 	artifactsPath       = "artifacts"
-	promTarPath         = "metrics/prometheus.tar"
+	promTarPath         = "metrics/prometheus.tar.gz"
+	promTarLegacyPath   = "metrics/prometheus.tar"
 	prom2ndTarPath      = "metrics/prometheus-k8s-1.tar"
 	extraPath           = "gather-extra"
 	hypershiftExtraPath = "hypershift-dump-extra"
@@ -78,51 +79,70 @@ func getLinksFromURL(url string) ([]string, error) {
 	}
 }
 
-func getMetricsTar(conn *websocket.Conn, url *url.URL) (ProwInfo, error) {
-	sendWSMessage(conn, "status", fmt.Sprintf("Fetching %s", url))
+func getMetricsTar(conn *websocket.Conn, requestURL *url.URL) (ProwInfo, error) {
+	sendWSMessage(conn, "status", fmt.Sprintf("Fetching %s", requestURL))
 
-	prowInfo, err := getTarURLFromProw(conn, url)
+	prowInfo, err := getTarURLFromProw(conn, requestURL)
 	if err != nil {
 		return prowInfo, err
 	}
 	expectedMetricsURL := prowInfo.MetricsURL
 
-	sendWSMessage(conn, "status", fmt.Sprintf("Found prometheus archive at %s", expectedMetricsURL))
+	// New Prow jobs use prometheus.tar.gz; try the legacy filename if needed.
+	archiveURLs := []string{expectedMetricsURL}
+	if metricsURL, err := url.Parse(expectedMetricsURL); err == nil && strings.HasSuffix(metricsURL.Path, promTarPath) {
+		metricsURL.Path = strings.TrimSuffix(metricsURL.Path, promTarPath) + promTarLegacyPath
+		metricsURL.RawPath = ""
+		archiveURLs = append(archiveURLs, metricsURL.String())
+	}
 
-	// Check that metrics/prometheus.tar can be fetched and it non-null
-	sendWSMessage(conn, "status", "Checking if prometheus archive can be fetched")
 	var netClient = &http.Client{
 		Timeout: time.Second * 10,
 	}
-	resp, err := netClient.Head(expectedMetricsURL)
+	var lastErr error
+	for _, archiveURL := range archiveURLs {
+		sendWSMessage(conn, "status", fmt.Sprintf("Checking if prometheus archive can be fetched at %s", archiveURL))
+		if err := checkMetricsArchive(netClient, archiveURL); err != nil {
+			lastErr = err
+			continue
+		}
+		prowInfo.MetricsURL = archiveURL
+		sendWSMessage(conn, "status", fmt.Sprintf("Found prometheus archive at %s", archiveURL))
+		return prowInfo, nil
+	}
+	return prowInfo, lastErr
+}
+
+func checkMetricsArchive(netClient *http.Client, archiveURL string) error {
+	resp, err := netClient.Head(archiveURL)
 	if err != nil {
-		return prowInfo, fmt.Errorf("failed to fetch %s: %v", expectedMetricsURL, err)
+		return fmt.Errorf("failed to fetch %s: %v", archiveURL, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return prowInfo, fmt.Errorf("failed to check archive at %s: returned %s", expectedMetricsURL, resp.Status)
+		return fmt.Errorf("failed to check archive at %s: returned %s", archiveURL, resp.Status)
 	}
 
 	contentLength := resp.Header.Get("content-length")
 	if contentLength == "" {
-		return prowInfo, fmt.Errorf("failed to check archive at %s: no content length returned", expectedMetricsURL)
+		return fmt.Errorf("failed to check archive at %s: no content length returned", archiveURL)
 	}
 	length, err := strconv.Atoi(contentLength)
 	if err != nil {
-		return prowInfo, fmt.Errorf("failed to check archive at %s: invalid content-length: %v", expectedMetricsURL, err)
+		return fmt.Errorf("failed to check archive at %s: invalid content-length: %v", archiveURL, err)
 	}
 	if length == 0 {
-		return prowInfo, fmt.Errorf("failed to check archive at %s: archive is empty", expectedMetricsURL)
+		return fmt.Errorf("failed to check archive at %s: archive is empty", archiveURL)
 	}
-	return prowInfo, nil
+	return nil
 }
 
 func getTarURLFromProw(conn *websocket.Conn, baseURL *url.URL) (ProwInfo, error) {
 	prowInfo := ProwInfo{}
 
 	// Is it a direct prom tarball link?
-	if strings.HasSuffix(baseURL.Path, promTarPath) || strings.HasSuffix(baseURL.Path, prom2ndTarPath) {
+	if strings.HasSuffix(baseURL.Path, promTarPath) || strings.HasSuffix(baseURL.Path, promTarLegacyPath) || strings.HasSuffix(baseURL.Path, prom2ndTarPath) {
 		// Make it a fetchable URL if it's a gcsweb URL
 		tempMetricsURL := strings.Replace(baseURL.String(), gcsPrefix+"/gcs", storagePrefix, -1)
 		prowInfo.MetricsURL = tempMetricsURL

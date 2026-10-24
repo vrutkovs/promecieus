@@ -140,8 +140,9 @@ PromeCIeus supports multiple Prometheus metrics archive formats and URL types:
 
 ### Primary Archive Formats
 
-1. **Standard Prometheus Archive** (`metrics/prometheus.tar`)
+1. **Standard Prometheus Archive** (`metrics/prometheus.tar.gz`)
    - Default format for most CI test runs
+   - Legacy `metrics/prometheus.tar` archives are also supported
    - Contains the complete Prometheus metrics snapshot
 
 2. **Alternative Prometheus Archive** (`metrics/prometheus-k8s-1.tar`)
@@ -151,8 +152,8 @@ PromeCIeus supports multiple Prometheus metrics archive formats and URL types:
 ### URL Types Supported
 
 1. **Direct Archive URLs**
-   - Direct links to `metrics/prometheus.tar` or `metrics/prometheus-k8s-1.tar`
-   - Example: `https://storage.googleapis.com/path/to/metrics/prometheus.tar`
+   - Direct links to `metrics/prometheus.tar.gz`, legacy `metrics/prometheus.tar`, or `metrics/prometheus-k8s-1.tar`
+   - Example: `https://storage.googleapis.com/path/to/metrics/prometheus.tar.gz`
 
 2. **Prow CI Job URLs**
    - Prow job result pages (e.g., `https://prow.ci.openshift.org/view/gs/origin-ci-test/...`)
@@ -171,7 +172,7 @@ To use the alternative Prometheus metrics archive (`prometheus-k8s-1.tar`), add 
 https://prow.ci.openshift.org/view/gs/origin-ci-test/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-aws-upgrade/1723456789?altsnap=true
 ```
 
-This tells PromeCIeus to look for `metrics/prometheus-k8s-1.tar` instead of the default `metrics/prometheus.tar`.
+This tells PromeCIeus to look for `metrics/prometheus-k8s-1.tar` instead of the default `metrics/prometheus.tar.gz` (or legacy `metrics/prometheus.tar`).
 
 ### Archive Validation
 
@@ -270,7 +271,7 @@ For issues and questions:
 
 **Metrics archive not found**
 - Ensure the URL is accessible and points to a valid Prometheus metrics archive
-- Check that the archive contains the expected `metrics/prometheus.tar` or `metrics/prometheus-k8s-1.tar` files
+- Check that the archive contains `metrics/prometheus.tar.gz` (or legacy `metrics/prometheus.tar`) or `metrics/prometheus-k8s-1.tar`
 - Verify the URL format matches the supported types (direct archive, Prow job, or GCS web interface)
 - If using alternative metrics, ensure `?altsnap=true` is added to the URL
 
